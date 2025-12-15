@@ -1,18 +1,14 @@
 import os
 import httpx
-from fastapi import HTTPException, Depends, Request, Header
+from fastapi import HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, Dict, Any
 import jwt
 from cryptography.hazmat.primitives import serialization
 import base64
-import hashlib
-import secrets
-from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from models import User
-from typing import Dict, Any
+from ..models import User
 
 security = HTTPBearer()
 
@@ -65,14 +61,14 @@ class ClerkAuth:
 
         try:
             # For development: decode without verification if using test/placeholder key
-            if self.secret_key.startswith("sk_test_") or "your_secret_key_here" in self.secret_key:
+            if self.secret_key.startswith("sk_test_") or "placeholder" in self.secret_key.lower():
                 try:
                     # Just decode without verification in development with test keys
                     payload = jwt.decode(token, options={"verify_signature": False})
-                    
+                    print(f"DEBUG: Decoded token payload: {payload}")
                     return payload
                 except jwt.DecodeError as e:
-                    
+                    print(f"DEBUG: JWT decode error: {e}")
                     raise HTTPException(status_code=401, detail=f"Invalid token format: {str(e)}")
 
             # For production: verify with Clerk's public keys
@@ -107,7 +103,7 @@ class ClerkAuth:
 
         # Clerk API endpoint for user profile
         url = f"https://api.clerk.com/v1/users/{user_id}"
-        
+        print(f"DEBUG: Fetching user profile from: {url}")
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -118,7 +114,7 @@ class ClerkAuth:
                         "Content-Type": "application/json"
                     }
                 )
-                
+                print(f"DEBUG: Clerk API response status: {response.status_code}")
 
                 if response.status_code == 401:
                     print("ERROR: Authentication failed - CLERK_SECRET_KEY may be invalid")
@@ -133,7 +129,7 @@ class ClerkAuth:
 
                 response.raise_for_status()
                 user_data = response.json()
-                
+                print(f"DEBUG: Successfully fetched user data for: {user_data.get('id')}")
 
                 # Extract user information
                 email_addresses = user_data.get("email_addresses", [])
@@ -178,76 +174,3 @@ class ClerkAuth:
 
 # Global auth instance
 clerk_auth = ClerkAuth()
-
-# Dependency for protected routes
-async def get_current_user(request: Request):
-    """Get current authenticated user"""
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Authorization header missing or invalid")
-
-    token = auth_header.split(" ")[1]
-    
-
-    # Verify token with Clerk
-    token_payload = await clerk_auth.verify_token(token)
-    
-
-    return token_payload
-
-
-# API Key Authentication (for SDK users)
-class APIKeyAuth:
-    def __init__(self):
-        # In production, this would be stored in database
-        # For demo purposes, using in-memory store
-        self.api_keys = {
-            # Example: hash("unf_live_demo_key") -> user_id mapping
-            "hashed_demo_key": {
-                "user_id": "demo_user_123",
-                "is_active": True,
-                "rate_limit_per_min": 100,
-                "rate_limit_per_day": 10000,
-            }
-        }
-
-    def hash_api_key(self, api_key: str) -> str:
-        """Hash API key for storage/lookup"""
-        return hashlib.sha256(api_key.encode()).hexdigest()
-
-    def generate_api_key(self, user_id: str) -> str:
-        """Generate a new API key for a user"""
-        # Generate a secure random key
-        key = f"unf_live_{secrets.token_urlsafe(32)}"
-        key_hash = self.hash_api_key(key)
-
-        # Store in our "database"
-        self.api_keys[key_hash] = {
-            "user_id": user_id,
-            "is_active": True,
-            "rate_limit_per_min": 100,
-            "rate_limit_per_day": 10000,
-        }
-
-        return key
-
-    async def validate_api_key(self, api_key: str) -> dict:
-        """Validate API key and return user info"""
-        key_hash = self.hash_api_key(api_key)
-
-        if key_hash not in self.api_keys:
-            raise HTTPException(status_code=401, detail="Invalid API key")
-
-        key_data = self.api_keys[key_hash]
-        if not key_data["is_active"]:
-            raise HTTPException(status_code=401, detail="API key is inactive")
-
-        return key_data
-
-# Global API key auth instance
-api_key_auth = APIKeyAuth()
-
-# Dependency for API key protected routes
-async def get_api_user(x_platform_key: str = Header(..., alias="X-Platform-Key")) -> dict:
-    """Get user from API key for SDK calls"""
-    return await api_key_auth.validate_api_key(x_platform_key)
