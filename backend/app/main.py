@@ -12,6 +12,7 @@ from .database import get_db, engine
 from .auth.dependencies import get_current_user, get_api_user, api_key_auth
 from .models import User
 from .routes.onboarding import router as onboarding_router
+from .routes.unified_api import router as unified_api_router
 from .cache import init_redis, close_redis, cache_service
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -72,6 +73,7 @@ async def shutdown_event():
 
 # Include routers
 app.include_router(onboarding_router, prefix="/api/onboarding", tags=["onboarding"])
+app.include_router(unified_api_router, prefix="/v1", tags=["unified-api"])
 
 # Health check endpoint
 @app.get("/")
@@ -282,26 +284,3 @@ async def create_test_user(db: AsyncSession = Depends(get_db)):
             "error": str(e),
             "error_type": type(e).__name__
         }
-
-# Unified API routes (API Key Auth)
-class PaymentOrder(BaseModel):
-    amount: float = Field(..., gt=0, description="Amount must be greater than 0")
-    currency: str = Field(default="INR", min_length=3, max_length=3)
-    description: str = Field(default="", max_length=255)
-
-@app.post("/v1/payments/orders")
-async def create_payment_order(order: PaymentOrder, api_user: dict = Depends(get_api_user)):
-    """Create a payment order (unified API)"""
-    # Validate amount
-    if order.amount > 10000000:  # Max reasonable amount
-        return JSONResponse(status_code=400, content={"error": "Amount exceeds maximum limit"})
-
-    # This would route to the appropriate payment provider
-    return {
-        "transaction_id": f"txn_{api_user['user_id']}_123",
-        "provider": "razorpay",  # Would be determined by routing logic
-        "status": "created",
-        "amount": order.amount,
-        "currency": order.currency,
-        "description": order.description
-    }

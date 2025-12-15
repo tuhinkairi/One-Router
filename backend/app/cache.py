@@ -283,10 +283,10 @@ async def init_redis():
     try:
         redis = await RedisManager.get_redis()
         await redis.ping()
-        print("✅ Redis connection established")
+        print("Redis connection established")
     except Exception as e:
-        print(f"❌ Redis connection failed: {e}")
-        print("⚠️  App will continue but caching will not work")
+        print(f"Redis connection failed: {e}")
+        print("Warning: App will continue but caching will not work")
 
 
 async def close_redis():
