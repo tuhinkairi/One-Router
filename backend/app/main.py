@@ -16,7 +16,7 @@ from .routes.unified_api import router as unified_api_router
 from .routes.services import router as services_router
 from .cache import init_redis, close_redis, cache_service
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 # Initialize database tables
 async def init_db():
@@ -136,6 +136,54 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         print(f"Redis health check failed: {e}")
 
     return health_status
+
+# Admin authorization dependency
+async def get_admin_user(user = Depends(get_current_user)):
+    """Verify user is authenticated and has admin role"""
+    # Admin check: verify user ID against ADMIN_USER_IDS env var or hardcoded list
+    admin_user_ids = settings.ADMIN_USER_IDS if hasattr(settings, 'ADMIN_USER_IDS') else []
+    user_id = user.get("id")
+    
+    if not user_id or user_id not in admin_user_ids:
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    
+    return user
+
+# Encryption Key Management (Admin only)
+@app.post("/api/admin/rotate-encryption-key")
+async def rotate_encryption_key(user = Depends(get_admin_user)):
+    """Rotate the encryption key (admin only)"""
+    from app.services.credential_manager import CredentialManager
+
+    try:
+        cred_manager = CredentialManager()
+        new_version = cred_manager.rotate_encryption_key()
+
+        return {
+            "message": f"Encryption key rotated successfully to version {new_version}",
+            "new_version": new_version,
+            "warning": "Rotated keys are in-memory only. Backup the new key for production."
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Key rotation failed: {str(e)}")
+
+@app.get("/api/admin/encryption-status")
+async def get_encryption_status(user = Depends(get_admin_user)):
+    """Get encryption system status (admin only)"""
+    from app.services.credential_manager import CredentialManager
+
+    try:
+        cred_manager = CredentialManager()
+        key_info = cred_manager.get_key_info()
+
+        return {
+            "encryption_algorithm": key_info["algorithm"],
+            "current_key_version": key_info["current_version"],
+            "available_key_versions": key_info["available_versions"],
+            "total_keys": len(key_info["available_versions"])
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get encryption status: {str(e)}")
 
 @app.get("/api/debug/redis")
 async def debug_redis(user = Depends(get_current_user)):
@@ -298,6 +346,218 @@ async def get_api_key_usage(
         "key_name": key_info["key_name"],
         "usage": usage_stats
     }
+
+# Usage Analytics Dashboard
+@app.get("/api/analytics/usage")
+async def get_usage_analytics(
+    days: int = 30,
+    db: AsyncSession = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    """Get comprehensive usage analytics for the user"""
+    from app.models import TransactionLog, ApiKey
+    from sqlalchemy import select, func, desc
+    from datetime import timedelta
+
+    user_id = str(user.get("id") or "unknown_user")
+    since_date = datetime.utcnow() - timedelta(days=days)
+
+    try:
+        # Get user's API keys
+        api_keys_result = await db.execute(
+            select(ApiKey).where(ApiKey.user_id == user_id)
+        )
+        user_api_keys = api_keys_result.scalars().all()
+        api_key_ids = [str(key.id) for key in user_api_keys]
+
+        if not api_key_ids:
+            return {
+                "period_days": days,
+                "total_requests": 0,
+                "api_keys_count": 0,
+                "daily_usage": [],
+                "service_usage": [],
+                "top_endpoints": [],
+                "rate_limit_status": {}
+            }
+
+        # Total requests across all user's API keys
+        total_result = await db.execute(
+            select(func.count(TransactionLog.id))
+            .where(
+                TransactionLog.api_key_id.in_(api_key_ids),
+                TransactionLog.created_at >= since_date
+            )
+        )
+        total_requests = total_result.scalar()
+
+        # Daily usage
+        daily_result = await db.execute(
+            select(
+                func.date(TransactionLog.created_at).label('date'),
+                func.count(TransactionLog.id).label('count')
+            )
+            .where(
+                TransactionLog.api_key_id.in_(api_key_ids),
+                TransactionLog.created_at >= since_date
+            )
+            .group_by(func.date(TransactionLog.created_at))
+            .order_by(func.date(TransactionLog.created_at))
+        )
+        daily_usage = [{"date": str(row.date), "requests": row.count} for row in daily_result]
+
+        # Service usage
+        service_result = await db.execute(
+            select(
+                TransactionLog.service_name,
+                func.count(TransactionLog.id).label('count')
+            )
+            .where(
+                TransactionLog.api_key_id.in_(api_key_ids),
+                TransactionLog.created_at >= since_date
+            )
+            .group_by(TransactionLog.service_name)
+            .order_by(func.count(TransactionLog.id).desc())
+        )
+        service_usage = [{"service": row.service_name, "requests": row.count} for row in service_result]
+
+        # Top endpoints
+        endpoint_result = await db.execute(
+            select(
+                TransactionLog.endpoint,
+                func.count(TransactionLog.id).label('count')
+            )
+            .where(
+                TransactionLog.api_key_id.in_(api_key_ids),
+                TransactionLog.created_at >= since_date
+            )
+            .group_by(TransactionLog.endpoint)
+            .order_by(func.count(TransactionLog.id).desc())
+            .limit(10)
+        )
+        top_endpoints = [{"endpoint": row.endpoint, "requests": row.count} for row in endpoint_result]
+
+        # API key status and rate limits
+        rate_limit_status = {}
+        for key in user_api_keys:
+            rate_limit_status[str(key.id)] = {
+                "name": key.key_name,
+                "is_active": key.is_active,
+                "rate_limit_min": key.rate_limit_per_min,
+                "rate_limit_day": key.rate_limit_per_day,
+                "last_used": key.last_used_at.isoformat() if key.last_used_at else None,
+                "expires_at": key.expires_at.isoformat() if key.expires_at else None
+            }
+
+        return {
+            "period_days": days,
+            "total_requests": total_requests,
+            "api_keys_count": len(api_key_ids),
+            "daily_usage": daily_usage,
+            "service_usage": service_usage,
+            "top_endpoints": top_endpoints,
+            "rate_limit_status": rate_limit_status
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Analytics error: {str(e)}")
+
+@app.get("/api/analytics/billing")
+async def get_billing_analytics(
+    month: Optional[str] = None,  # Format: YYYY-MM
+    db: AsyncSession = Depends(get_db),
+    user = Depends(get_current_user)
+):
+    """Get billing analytics (usage-based pricing)"""
+    from app.models import TransactionLog, ApiKey
+    from sqlalchemy import select, func, extract
+    from datetime import datetime
+    import calendar
+
+    # Verify user has a valid ID
+    user_id = user.get("id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User ID not found in authentication token")
+    
+    user_id = str(user_id)
+
+    # Default to current month if not specified
+    if not month:
+        now = datetime.utcnow()
+        month = f"{now.year:04d}-{now.month:02d}"
+
+    try:
+        year, month_num = map(int, month.split('-'))
+        start_date = datetime(year, month_num, 1)
+        end_date = datetime(year, month_num, calendar.monthrange(year, month_num)[1], 23, 59, 59)
+
+        # Get user's API keys
+        api_keys_result = await db.execute(
+            select(ApiKey).where(ApiKey.user_id == user_id)
+        )
+        user_api_keys = api_keys_result.scalars().all()
+        api_key_ids = [str(key.id) for key in user_api_keys]
+
+        if not api_key_ids:
+            return {
+                "billing_period": month,
+                "total_requests": 0,
+                "estimated_cost": 0,
+                "breakdown": {}
+            }
+
+        # Calculate usage by service for billing
+        billing_result = await db.execute(
+            select(
+                TransactionLog.service_name,
+                func.count(TransactionLog.id).label('requests')
+            )
+            .where(
+                TransactionLog.api_key_id.in_(api_key_ids),
+                TransactionLog.created_at >= start_date,
+                TransactionLog.created_at <= end_date
+            )
+            .group_by(TransactionLog.service_name)
+        )
+
+        # Simple pricing model (customize based on your needs)
+        pricing = {
+            "razorpay": 0.001,  # $0.001 per request
+            "paypal": 0.0015,   # $0.0015 per request
+            "stripe": 0.0012,   # $0.0012 per request
+            "default": 0.001    # $0.001 per request for others
+        }
+
+        total_requests = 0
+        total_cost = 0
+        breakdown = {}
+
+        for row in billing_result:
+            service = row.service_name
+            requests = row.requests
+            cost_per_request = pricing.get(service, pricing["default"])
+            cost = requests * cost_per_request
+
+            breakdown[service] = {
+                "requests": requests,
+                "cost_per_request": cost_per_request,
+                "total_cost": round(cost, 4)
+            }
+
+            total_requests += requests
+            total_cost += cost
+
+        return {
+            "billing_period": month,
+            "total_requests": total_requests,
+            "estimated_cost": round(total_cost, 4),
+            "currency": "USD",
+            "breakdown": breakdown,
+            "pricing_note": "Sample pricing - customize based on your business model"
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Billing analytics error: {str(e)}")
 
 # Debug endpoints
 @app.get("/api/debug/db")

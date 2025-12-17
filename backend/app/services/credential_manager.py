@@ -159,6 +159,32 @@ class CredentialManager:
         )
         return self.current_key_version
 
+    def should_rotate_key(self, max_age_days: int = 90) -> bool:
+        """Check if encryption key should be rotated based on age."""
+        # For now, always return False (manual rotation only)
+        # In production, track key creation dates and rotate automatically
+        return False
+
+    def cleanup_old_keys(self, keep_versions: int = 5) -> int:
+        """Clean up old encryption keys, keeping only the most recent ones."""
+        if len(self.encryption_keys) <= keep_versions:
+            return 0
+
+        # Keep only the most recent versions
+        sorted_versions = sorted(self.encryption_keys.keys(), reverse=True)
+        versions_to_remove = sorted_versions[keep_versions:]
+
+        removed_count = 0
+        for version in versions_to_remove:
+            if version != self.current_key_version:  # Never remove current key
+                del self.encryption_keys[version]
+                removed_count += 1
+
+        if removed_count > 0:
+            logger.info(f"Cleaned up {removed_count} old encryption keys")
+
+        return removed_count
+
     def get_key_info(self) -> Dict[str, Any]:
         """Get information about current encryption keys"""
         return {

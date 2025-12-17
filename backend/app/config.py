@@ -35,12 +35,19 @@ class Settings:
     DEFAULT_RATE_LIMIT_MINUTE: int = 60
     DEFAULT_RATE_LIMIT_DAY: int = 10000
 
+    # Admin Configuration
+    ADMIN_USER_IDS: list = []  # Will be populated from env var
+
     # File Upload
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
     ALLOWED_EXTENSIONS: set = {".env", ".txt"}
 
     def __init__(self):
         """Initialize settings and validate/generate encryption key"""
+        # Load admin user IDs from environment variable (comma-separated)
+        admin_ids_env = os.getenv("ADMIN_USER_IDS", "")
+        self.ADMIN_USER_IDS = [uid.strip() for uid in admin_ids_env.split(",") if uid.strip()]
+        
         self._validate_and_setup_encryption_key()
 
     def _validate_and_setup_encryption_key(self):
