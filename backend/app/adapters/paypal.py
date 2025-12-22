@@ -113,14 +113,20 @@ class PayPalAdapter(BaseAdapter):
             access_token = await self._get_access_token()
 
             # v2 API format
+            purchase_unit = {
+                "amount": {
+                    "currency_code": currency,
+                    "value": f"{amount:.2f}"
+                }
+            }
+
+            # Add custom_id for webhook identification (maps to user_id)
+            if kwargs.get('custom_id'):
+                purchase_unit["custom_id"] = kwargs['custom_id']
+
             order_data = {
                 "intent": "CAPTURE",
-                "purchase_units": [{
-                    "amount": {
-                        "currency_code": currency,
-                        "value": f"{amount:.2f}"
-                    }
-                }]
+                "purchase_units": [purchase_unit]
             }
 
             # Optional: add return/cancel URLs for checkout flow

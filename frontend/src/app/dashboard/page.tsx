@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Shield, Key, BarChart3, Link as LinkIcon, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import { EnvironmentToggle } from "@/components/EnvironmentToggle";
+import { GlobalEnvironmentToggle } from "@/components/GlobalEnvironmentToggle";
 
 export const dynamic = 'force-dynamic';
 
@@ -17,8 +19,9 @@ interface Service {
 // Server-side API call to check user services
 async function getUserServices(token: string) {
   const API_BASE_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-  
+
   try {
+    console.log('Fetching services with token:', token ? 'present' : 'missing');
     const response = await fetch(`${API_BASE_URL}/api/services`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -28,13 +31,21 @@ async function getUserServices(token: string) {
     });
 
     if (!response.ok) {
-      console.error('Failed to fetch services:', response.status);
+      console.error('Failed to fetch services:', response.status, response.statusText);
+      // If unauthorized, don't redirect - let the client handle it
+      if (response.status === 401) {
+        console.log('Authentication failed, returning empty services');
+        return { services: [], has_services: false, total_count: 0 };
+      }
       return { services: [], has_services: false, total_count: 0 };
     }
 
-    return await response.json();
+    const data = await response.json();
+    console.log('Services data:', data);
+    return data;
   } catch (error) {
     console.error('Error fetching services:', error);
+    // Don't fail completely on network errors - return empty state
     return { services: [], has_services: false, total_count: 0 };
   }
 }
@@ -58,10 +69,9 @@ export default async function DashboardPage() {
   const hasServices = servicesData.has_services;
   const services = servicesData.services || [];
 
-  // If no services, redirect to onboarding
-  if (!hasServices) {
-    redirect("/onboarding");
-  }
+  // For now, don't redirect to onboarding - let the user see the dashboard
+  // and handle the empty state there. This prevents redirect loops.
+  console.log('Dashboard: Services check result:', { hasServices, servicesCount: services.length, services });
 
   // API Keys count (placeholder - you can fetch real data)
   const apiKeysCount = 0;
@@ -79,16 +89,17 @@ export default async function DashboardPage() {
               </div>
               <p className="text-sm text-[#888] font-mono">Welcome back</p>
             </div>
-            <div className="flex items-center space-x-4">
-              <Badge className="bg-[#1a1a1a] border border-[#00ff88] text-[#00ff88] px-3 py-1 font-mono">
-                Free Plan
-              </Badge>
-              <Link href="/api-keys">
-                <Button className="bg-[#00ff88] text-black hover:bg-[#00dd77] font-mono font-bold">
-                  Manage API Keys
-                </Button>
-              </Link>
-            </div>
+             <div className="flex items-center space-x-4">
+               <GlobalEnvironmentToggle services={services} />
+               <Badge className="bg-[#1a1a1a] border border-[#00ff88] text-[#00ff88] px-3 py-1 font-mono">
+                 Free Plan
+               </Badge>
+               <Link href="/api-keys">
+                 <Button className="bg-[#00ff88] text-black hover:bg-[#00dd77] font-mono font-bold">
+                   Manage API Keys
+                 </Button>
+               </Link>
+             </div>
           </div>
         </div>
       </header>
@@ -127,46 +138,77 @@ export default async function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-[#0a0a0a] border-[#222] hover:border-[#00ff88] transition-colors">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-[#888] font-mono">Services</p>
-                    <p className="text-3xl font-bold text-[#00ff88] font-mono">{services.length}</p>
-                    <p className="text-xs text-[#666] font-mono mt-1">Connected providers</p>
-                  </div>
-                  <div className="w-12 h-12 bg-[#00ff88]/10 rounded-lg flex items-center justify-center">
-                    <LinkIcon className="w-6 h-6 text-[#00ff88]" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+             <Card className="bg-[#0a0a0a] border-[#222] hover:border-[#00ff88] transition-colors">
+               <CardContent className="p-6">
+                 <div className="flex items-center justify-between">
+                   <div>
+                     <p className="text-sm font-medium text-[#888] font-mono">Services</p>
+                     <p className="text-3xl font-bold text-[#00ff88] font-mono">{services.length}</p>
+                     <p className="text-xs text-[#666] font-mono mt-1">
+                       {services.length === 0 ? 'No providers connected' : 'Connected providers'}
+                     </p>
+                   </div>
+                   <div className="w-12 h-12 bg-[#00ff88]/10 rounded-lg flex items-center justify-center">
+                     <LinkIcon className="w-6 h-6 text-[#00ff88]" />
+                   </div>
+                 </div>
+               </CardContent>
+             </Card>
           </div>
 
-          {/* Connected Services */}
-          <Card className="bg-[#0a0a0a] border-[#222] mb-8">
-            <CardHeader>
-              <CardTitle className="font-mono text-white">🔗 Connected Services</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {services.map((service: Service) => (
-                  <div key={service.id} className="flex items-center justify-between p-4 bg-[#1a1a1a] border border-[#222] rounded-lg hover:border-[#00ff88] transition-colors">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-[#00ff88]" />
-                      <div>
-                        <p className="font-medium text-white font-mono capitalize">{service.service_name}</p>
-                        <p className="text-sm text-[#888] font-mono">
-                          Environment: {service.environment}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge className="bg-[#00ff88] text-black border-0">
-                      Active
-                    </Badge>
-                  </div>
-                ))}
-              </div>
+           {/* Connected Services */}
+           <Card className="bg-[#0a0a0a] border-[#222] mb-8">
+             <CardHeader>
+               <CardTitle className="font-mono text-white">🔗 Connected Services</CardTitle>
+             </CardHeader>
+             <CardContent>
+               {services.length === 0 ? (
+                 <div className="text-center py-8">
+                   <div className="w-16 h-16 bg-[#00ff88]/10 rounded-full flex items-center justify-center mb-4 mx-auto">
+                     <LinkIcon className="w-8 h-8 text-[#00ff88]" />
+                   </div>
+                   <p className="text-white font-mono mb-2">No services connected yet</p>
+                   <p className="text-[#888] font-mono text-sm mb-4">Connect your first payment service to get started</p>
+                   <Link href="/onboarding">
+                     <Button className="bg-[#00ff88] text-black hover:bg-[#00dd77] font-mono">
+                       Connect Services
+                     </Button>
+                   </Link>
+                 </div>
+               ) : (
+                 <div className="space-y-3">
+                   {services.map((service: Service) => (
+                     <div key={service.id} className="p-4 bg-[#1a1a1a] border border-[#222] rounded-lg hover:border-[#00ff88] transition-colors">
+                       <div className="flex items-center justify-between mb-3">
+                         <div className="flex items-center gap-3">
+                           <CheckCircle2 className="w-5 h-5 text-[#00ff88]" />
+                           <div>
+                             <p className="font-medium text-white font-mono capitalize">{service.service_name}</p>
+                             <p className="text-sm text-[#888] font-mono">
+                               Environment: {service.environment}
+                             </p>
+                           </div>
+                         </div>
+                         <Badge className="bg-[#00ff88] text-black border-0">
+                           Active
+                         </Badge>
+                       </div>
+                       <EnvironmentToggle service={service.service_name} />
+                     <p className="text-xs text-[#666] font-mono mt-1">
+                       Service: {service.service_name} | Environment: {service.environment}
+                     </p>
+                     {/* Debug info */}
+                     {typeof window !== 'undefined' && (
+                       <script
+                         dangerouslySetInnerHTML={{
+                           __html: `console.log('Dashboard: Rendering EnvironmentToggle for service:', '${service.service_name}');`
+                         }}
+                       />
+                     )}
+                     </div>
+                   ))}
+                 </div>
+               )}
               <div className="mt-4">
                 <Link href="/onboarding">
                   <Button variant="outline" className="w-full bg-transparent border-[#222] text-white hover:border-[#00ff88] font-mono">

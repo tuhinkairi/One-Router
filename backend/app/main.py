@@ -67,6 +67,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add request ID tracking (helps debugging)
+@app.middleware("http")
+async def add_request_id(request, call_next):
+    request.state.request_id = str(uuid.uuid4())
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request.state.request_id
+    return response
+
 # Add security headers (skip for OPTIONS requests)
 @app.middleware("http")
 async def add_security_headers(request, call_next):
@@ -75,6 +83,9 @@ async def add_security_headers(request, call_next):
     # Skip security headers for OPTIONS requests (CORS preflight)
     if request.method == "OPTIONS":
         return response
+
+    # Add API versioning header
+    response.headers["X-API-Version"] = "1.0.0"
 
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
@@ -98,8 +109,21 @@ async def shutdown_event():
 
 # Include routers
 app.include_router(onboarding_router, prefix="/api/onboarding", tags=["onboarding"])
+
+# Import and include environments router (before services router to avoid conflicts)
+from .routes.environments import router as environments_router
+app.include_router(environments_router, tags=["environments"])
+
 app.include_router(services_router, prefix="/api", tags=["services"])
 app.include_router(unified_api_router, prefix="/v1", tags=["unified-api"])
+
+# Import and include webhook router
+from .routes.webhooks import router as webhooks_router
+app.include_router(webhooks_router, tags=["webhooks"])
+
+# Import and include analytics router
+from .routes.analytics import router as analytics_router
+app.include_router(analytics_router, tags=["analytics"])
 
 # Health check endpoint
 @app.get("/")
@@ -146,6 +170,50 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         health_status["sessions"] = f"error: {str(e)}"
 
     return health_status
+
+@app.get("/api/health/detailed")
+async def detailed_health_check(db: AsyncSession = Depends(get_db)):
+    """Detailed health check that tests all components"""
+    from .cache import check_redis_connection
+
+    health_status = {
+        "api": {
+            "status": "healthy",
+            "version": "1.0.0",
+            "timestamp": datetime.utcnow().isoformat()
+        },
+        "database": await check_db_connection(db),
+        "redis": await check_redis_connection(),
+        "services": {
+            "status": "operational",
+            "checked_at": datetime.utcnow().isoformat()
+        }
+    }
+
+    # Determine overall status
+    components = [health_status["database"], health_status["redis"]]
+    if any(comp.get("status") != "healthy" for comp in components):
+        health_status["overall_status"] = "degraded"
+    else:
+        health_status["overall_status"] = "healthy"
+
+    return health_status
+
+async def check_db_connection(db: AsyncSession) -> Dict[str, Any]:
+    """Test database connection health"""
+    try:
+        result = await db.execute(text("SELECT 1 as test, version() as version"))
+        row = result.first()
+        if row and row.test == 1:
+            return {
+                "status": "healthy",
+                "connection": "established",
+                "version": row.version[:50] + "..." if row.version and len(row.version) > 50 else row.version
+            }
+        else:
+            return {"status": "error", "message": "Database query failed"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 # Admin authorization dependency
 async def get_admin_user(user = Depends(get_current_user)):

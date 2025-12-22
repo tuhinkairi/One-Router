@@ -6,8 +6,9 @@ Receives webhooks from payment gateways → forwards to developer's webhook URL
 
 from fastapi import APIRouter, Request, HTTPException, Depends, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm.attributes import flag_modified
+from sqlalchemy.sql import func
 import httpx
 import hashlib
 import hmac
@@ -166,7 +167,11 @@ async def razorpay_webhook(
         )
     
     # Mark as processed
-    webhook_event.processed = True
+    await db.execute(
+        update(WebhookEvent)
+        .where(WebhookEvent.id == webhook_event.id)
+        .values(processed=True, processed_at=func.now())
+    )
     await db.commit()
     
     return {"status": "received", "event_id": str(webhook_event.id)}
@@ -289,35 +294,94 @@ async def paypal_webhook(
             "paypal"
         )
 
-    # Mark as processed (update the object, not the column directly)
+    # Mark as processed
     await db.execute(
-        "UPDATE webhook_events SET processed = true WHERE id = :id",
-        {"id": webhook_event.id}
+        update(WebhookEvent)
+        .where(WebhookEvent.id == webhook_event.id)
+        .values(processed=True, processed_at=func.now())
     )
     await db.commit()
     
     return {"status": "received", "event_id": str(webhook_event.id)}
 
 
-# Add webhook configuration endpoint for users
-@router.post("/api/webhooks/configure")
-async def configure_webhook(
-    service_name: str,
-    webhook_url: str,
+# ============================================
+# WEBHOOK CONFIGURATION API
+# ============================================
+
+from pydantic import BaseModel
+from typing import List
+
+
+class WebhookConfig(BaseModel):
+    webhook_url: str
+    events: List[str] = []  # Which events to forward
+    enabled: bool = True
+
+
+@router.get("/api/webhooks/configure")
+async def get_webhook_config(
+    service_name: Optional[str] = None,
     user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Allow users to configure their webhook URL
-    
-    POST /api/webhooks/configure
+    Get user's webhook configuration for all services or specific service
+
+    GET /api/webhooks/configure?service_name=razorpay
+    """
+    query = select(ServiceCredential).where(
+        ServiceCredential.user_id == user["id"],
+        ServiceCredential.is_active == True
+    )
+
+    if service_name:
+        query = query.where(ServiceCredential.provider_name == service_name)
+
+    result = await db.execute(query)
+    credentials = result.scalars().all()
+
+    config = {}
+    for cred in credentials:
+        service_config = cred.features_config or {}
+        config[cred.provider_name] = {
+            "webhook_url": service_config.get("webhook_url"),
+            "events": service_config.get("events", []),
+            "enabled": service_config.get("enabled", False),
+            "onerouter_webhook_url": f"https://api.onerouter.com/webhooks/{cred.provider_name}",
+            "last_configured": cred.updated_at.isoformat() if cred.updated_at is not None else None
+        }
+
+    return config
+
+
+@router.put("/api/webhooks/configure")
+async def update_webhook_config(
+    service_name: str,
+    config: WebhookConfig,
+    user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Update webhook configuration for a service
+
+    PUT /api/webhooks/configure
     {
         "service_name": "razorpay",
-        "webhook_url": "https://myapp.com/webhooks/payments"
+        "webhook_url": "https://myapp.com/webhooks/payments",
+        "events": ["payment.success", "payment.failed"],
+        "enabled": true
     }
     """
-    
-    # Update service credential with webhook URL
+
+    # Validate webhook URL (must be HTTPS in production)
+    if config.webhook_url:
+        from urllib.parse import urlparse
+        parsed = urlparse(config.webhook_url)
+        if parsed.scheme != "https" and os.getenv("ENVIRONMENT") == "production":
+            raise HTTPException(status_code=400, detail="Webhook URL must use HTTPS in production")
+
+    # Update service credential with webhook config
     result = await db.execute(
         select(ServiceCredential).where(
             ServiceCredential.user_id == user["id"],
@@ -326,22 +390,134 @@ async def configure_webhook(
         )
     )
     credential = result.scalar_one_or_none()
-    
+
     if not credential:
         raise HTTPException(status_code=404, detail="Service not configured")
 
-    # Update features_config with webhook_url
-    if not credential.features_config:
-        credential.features_config = {}
+    # Update features_config with webhook settings
+    if credential.features_config is None:
+        credential.features_config = {}  # type: ignore
 
-    credential.features_config["webhook_url"] = webhook_url
+    credential.features_config["webhook_url"] = config.webhook_url  # type: ignore
+    credential.features_config["events"] = config.events  # type: ignore
+    credential.features_config["enabled"] = config.enabled  # type: ignore
+
     flag_modified(credential, "features_config")
 
+    flag_modified(credential, "features_config")
     await db.commit()
-    
+
     return {
         "status": "configured",
         "service": service_name,
-        "webhook_url": webhook_url,
+        "config": credential.features_config,
         "onerouter_webhook_url": f"https://api.onerouter.com/webhooks/{service_name}"
+    }
+
+
+@router.post("/api/webhooks/test")
+async def test_webhook(
+    service_name: str,
+    user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Send test webhook to user's endpoint
+
+    POST /api/webhooks/test
+    {
+        "service_name": "razorpay"
+    }
+    """
+    # Get webhook config
+    result = await db.execute(
+        select(ServiceCredential).where(
+            ServiceCredential.user_id == user["id"],
+            ServiceCredential.provider_name == service_name,
+            ServiceCredential.is_active == True
+        )
+    )
+    credential = result.scalar_one_or_none()
+
+    if not credential:
+        raise HTTPException(status_code=404, detail="Service not configured")
+
+    webhook_url = credential.features_config.get("webhook_url")
+    if not webhook_url:
+        raise HTTPException(status_code=400, detail="Webhook URL not configured")
+
+    # Create test event
+    test_event = {
+        "event": "test.webhook",
+        "service": service_name,
+        "timestamp": "2025-01-01T00:00:00Z",
+        "test": True,
+        "message": "This is a test webhook from OneRouter"
+    }
+
+    # Send test webhook
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                webhook_url,
+                json=test_event,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-OneRouter-Test": "true",
+                    "X-OneRouter-Service": service_name
+                }
+            )
+
+            return {
+                "status": "sent",
+                "webhook_url": webhook_url,
+                "response_code": response.status_code,
+                "response_body": response.text[:500]  # Limit response size
+            }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to send test webhook: {str(e)}")
+
+
+@router.get("/api/webhooks/logs")
+async def get_webhook_logs(
+    service_name: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get webhook event history
+
+    GET /api/webhooks/logs?service_name=razorpay&limit=50
+    """
+    from sqlalchemy import desc
+
+    query = select(WebhookEvent).where(WebhookEvent.user_id == user["id"])
+
+    if service_name:
+        query = query.where(WebhookEvent.service_name == service_name)
+
+    query = query.order_by(desc(WebhookEvent.created_at)).limit(limit).offset(offset)
+
+    result = await db.execute(query)
+    events = result.scalars().all()
+
+    return {
+        "events": [
+            {
+                "id": str(event.id),
+                "service_name": event.service_name,
+                "event_type": event.event_type,
+                "processed": event.processed,
+                "processed_at": event.processed_at.isoformat() if event.processed_at is not None else None,
+                "created_at": event.created_at.isoformat(),
+                "payload_size": len(str(event.payload)) if event.payload is not None else 0
+            }
+            for event in events
+        ],
+        "total": len(events),
+        "limit": limit,
+        "offset": offset
     }

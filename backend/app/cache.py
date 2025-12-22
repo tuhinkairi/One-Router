@@ -256,6 +256,44 @@ class CacheService:
         except Exception as e:
             print(f"Redis ping failed: {e}")
             return False
+
+    async def get_connection_info(self) -> dict:
+        """Get Redis connection information"""
+        try:
+            redis = await self._get_redis()
+            info = await redis.info()
+            return {
+                "status": "connected",
+                "version": info.get("redis_version", "unknown"),
+                "connected_clients": info.get("connected_clients", 0),
+                "used_memory_human": info.get("used_memory_human", "unknown")
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": str(e)
+            }
+
+
+async def check_redis_connection() -> dict:
+    """Check Redis connection health for health checks"""
+    try:
+        cache = CacheService()
+        is_connected = await cache.ping()
+
+        if is_connected:
+            info = await cache.get_connection_info()
+            return {
+                "status": "healthy",
+                "connection": "established",
+                "version": info.get("version", "unknown"),
+                "clients": info.get("connected_clients", 0)
+            }
+        else:
+            return {"status": "error", "message": "Redis ping failed"}
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
     
     async def clear_pattern(self, pattern: str):
         """Clear all keys matching pattern (use with caution!)"""

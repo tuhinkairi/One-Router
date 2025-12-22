@@ -8,6 +8,7 @@ export function useClientApiCall() {
 
   return async function clientApiCall(endpoint: string, options?: RequestInit) {
     const token = await getToken();
+    console.log('useClientApiCall: Token available:', !!token);
 
     const url = `${API_BASE_URL}${endpoint}`;
 
@@ -49,3 +50,4 @@ export function useGetAPIKeys() {
     return apiCall('/api/keys');
   };
 }
+

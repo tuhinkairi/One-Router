@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Upload, CheckCircle2, AlertCircle, Shield, Zap, FileCode } from "lucide-react";
+import { Upload, CheckCircle2, AlertCircle, Shield, Zap, FileCode, X } from "lucide-react";
 
 // Service Detection Types
 type ServiceStatus = "supported" | "unsupported";
@@ -30,10 +30,104 @@ const EnvOnboardingFlow = ({ onBack }: { onBack: () => void }) => {
   const [parsing, setParsing] = useState(false);
   const [parsed, setParsed] = useState(false);
   const [detectedServices, setDetectedServices] = useState<DetectedService[]>([]);
-  const [step, setStep] = useState<"upload" | "review" | "complete">("upload");
-  const [sessionId, setSessionId] = useState<string | null>(null);
+   const [step, setStep] = useState<"check-existing" | "upload" | "review" | "complete">("check-existing");
+   const [sessionId, setSessionId] = useState<string | null>(null);
+   const [existingServices, setExistingServices] = useState<DetectedService[]>([]);
+   const [detectedEnvironment, setDetectedEnvironment] = useState<"test" | "live" | null>(null);
+   const [checkingExisting, setCheckingExisting] = useState(true);
+   const [editingKey, setEditingKey] = useState<{ service: string; key: string; value: string } | null>(null);
 
-  // Supported services
+   // Check existing services on mount
+   useEffect(() => {
+     checkExistingServices();
+   }, []);
+
+   const checkExistingServices = async () => {
+     try {
+       const token = await getToken();
+       if (!token) return;
+
+       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+       // Get existing services
+       const servicesResponse = await fetch(`${API_BASE_URL}/api/services`, {
+         headers: {
+           'Authorization': `Bearer ${token}`,
+         },
+       });
+
+       if (servicesResponse.ok) {
+         const servicesData = await servicesResponse.json();
+         const existing: DetectedService[] = servicesData.services.map((service: BackendService) => ({
+           name: service.service_name,
+           status: "supported" as ServiceStatus,
+           keys: [], // We'll detect these from environment variables
+           features: Object.keys(service.features || {}).filter(key => service.features[key])
+         }));
+         setExistingServices(existing);
+       }
+
+       // Try to detect environment from current variables
+       await detectEnvironmentVariables();
+
+     } catch (error) {
+       console.error('Error checking existing services:', error);
+     } finally {
+       setCheckingExisting(false);
+     }
+   };
+
+   const detectEnvironmentVariables = async () => {
+     try {
+       // This is a simplified detection - in production, you might check actual environment variables
+       // For now, we'll detect based on existing service configurations
+       const token = await getToken();
+       if (!token) return;
+
+       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+       // Check if any services are configured with live credentials
+       let hasLiveCredentials = false;
+       for (const service of existingServices) {
+         try {
+           const envResponse = await fetch(`${API_BASE_URL}/api/services/${encodeURIComponent(service.name)}/environments`, {
+             headers: {
+               'Authorization': `Bearer ${token}`,
+             },
+           });
+           if (envResponse.ok) {
+             const envData = await envResponse.json();
+             if (envData.live?.configured) {
+               hasLiveCredentials = true;
+               break;
+             }
+           }
+         } catch (error) {
+           // Ignore errors for individual services
+         }
+       }
+
+       setDetectedEnvironment(hasLiveCredentials ? "live" : "test");
+     } catch (error) {
+       console.error('Error detecting environment:', error);
+       setDetectedEnvironment("test"); // Default to test
+     }
+   };
+
+   const handleKeyEdit = (serviceName: string, keyName: string) => {
+     setEditingKey({ service: serviceName, key: keyName, value: "" });
+   };
+
+   const handleKeyEditSubmit = () => {
+     // Here you would typically send the updated key to the backend
+     setEditingKey(null);
+   };
+
+   const handleExistingCheckComplete = () => {
+     setStep("upload");
+   };
+
+   // Supported services
   const SUPPORTED_SERVICES = {
     razorpay: { patterns: ["RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET"], features: ["Payments", "Refunds", "Webhooks"] },
     stripe: { patterns: ["STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY"], features: ["Payments", "Subscriptions", "Refunds"] },
@@ -229,12 +323,20 @@ const EnvOnboardingFlow = ({ onBack }: { onBack: () => void }) => {
           <div className="flex items-center justify-center gap-4">
             <div className={cn(
               "flex items-center gap-2 px-4 py-2 rounded-lg border font-mono text-sm",
-              step === "upload" ? "border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88]" : "border-[#222] text-white"
+              step === "check-existing" ? "border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88]" : "border-[#222] text-white"
+            )}>
+              <CheckCircle2 className="w-4 h-4" />
+              Check Existing
+            </div>
+            <div className="w-8 h-[2px] bg-[#222]" />
+            <div className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-lg border font-mono text-sm",
+              step === "upload" ? "border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88]" : "border-[#222] text-[#888]"
             )}>
               <Upload className="w-4 h-4" />
               Upload .env
             </div>
-            <div className="w-12 h-[2px] bg-[#222]" />
+            <div className="w-8 h-[2px] bg-[#222]" />
             <div className={cn(
               "flex items-center gap-2 px-4 py-2 rounded-lg border font-mono text-sm",
               step === "review" ? "border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88]" : "border-[#222] text-[#888]"
@@ -242,7 +344,7 @@ const EnvOnboardingFlow = ({ onBack }: { onBack: () => void }) => {
               <FileCode className="w-4 h-4" />
               Review Services
             </div>
-            <div className="w-12 h[2px] bg-[#222]" />
+            <div className="w-8 h-[2px] bg-[#222]" />
             <div className={cn(
               "flex items-center gap-2 px-4 py-2 rounded-lg border font-mono text-sm",
               step === "complete" ? "border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88]" : "border-[#222] text-[#888]"
@@ -257,6 +359,141 @@ const EnvOnboardingFlow = ({ onBack }: { onBack: () => void }) => {
       {/* Main Content */}
       <div className="px-6 py-12">
         <div className="max-w-5xl mx-auto">
+          {step === "check-existing" && (
+            <div className="space-y-8">
+              <div className="text-center space-y-4">
+                <h1 className="text-4xl md:text-5xl font-bold font-mono">
+                  Checking Your <span className="text-[#00ff88]">Setup</span>
+                </h1>
+                <p className="text-[#888] font-mono text-lg">
+                  Let us check what services are already configured
+                </p>
+              </div>
+
+              {checkingExisting ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#00ff88]"></div>
+                  <span className="ml-4 text-[#888] font-mono">Checking existing services...</span>
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  {/* Existing Services */}
+                  {existingServices.length > 0 && (
+                    <div className="space-y-6">
+                      <h2 className="text-2xl font-bold font-mono text-center">
+                        Already Configured Services
+                      </h2>
+                      <div className="space-y-4">
+                        {existingServices.map((service) => (
+                          <div key={service.name} className="p-6 bg-[#0a0a0a] border border-[#222] rounded-lg space-y-4">
+                            <div className="flex items-center gap-3 mb-3">
+                              <CheckCircle2 className="w-5 h-5 text-[#00ff88]" />
+                              <span className="font-medium text-white font-mono capitalize text-lg">
+                                {service.name}
+                              </span>
+                            </div>
+
+                            {/* Test Environment */}
+                            <div className="border-l-2 border-blue-500 pl-4 py-2">
+                              <p className="text-sm font-mono text-[#888] mb-2 uppercase tracking-wider">Test Credentials</p>
+                              <div className="flex flex-wrap gap-2">
+                                {service.keys.filter(k => k.includes('TEST') || k.includes('test')).length > 0 ? (
+                                  service.keys
+                                    .filter(k => k.includes('TEST') || k.includes('test'))
+                                    .map((key) => {
+                                      const cleanKey = key.replace('_TEST', '').replace('_test', '');
+                                      return (
+                                        <button
+                                          key={key}
+                                          onClick={() => handleKeyEdit(service.name, cleanKey)}
+                                          className="px-3 py-1 bg-[#1a1a1a] border border-blue-500/50 rounded font-mono text-xs text-blue-400 hover:bg-blue-500/10 hover:border-blue-500 transition-colors cursor-pointer"
+                                        >
+                                          {cleanKey}
+                                        </button>
+                                      );
+                                    })
+                                ) : (
+                                  <p className="text-xs text-[#666] font-mono italic">No test keys added</p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Live Environment */}
+                            <div className="border-l-2 border-green-500 pl-4 py-2">
+                              <p className="text-sm font-mono text-[#888] mb-2 uppercase tracking-wider">Live Credentials</p>
+                              <div className="flex flex-wrap gap-2">
+                                {service.keys.filter(k => !k.includes('TEST') && !k.includes('test')).length > 0 ? (
+                                  service.keys
+                                    .filter(k => !k.includes('TEST') && !k.includes('test'))
+                                    .map((key) => (
+                                      <button
+                                        key={key}
+                                        onClick={() => handleKeyEdit(service.name, key)}
+                                        className="px-3 py-1 bg-[#1a1a1a] border border-green-500/50 rounded font-mono text-xs text-green-400 hover:bg-green-500/10 hover:border-green-500 transition-colors cursor-pointer"
+                                      >
+                                        {key}
+                                      </button>
+                                    ))
+                                ) : (
+                                  <p className="text-xs text-[#666] font-mono italic">No live keys added</p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Features */}
+                            <div>
+                              <p className="text-sm font-mono text-[#888] mb-2 uppercase tracking-wider">Features</p>
+                              <div className="flex flex-wrap gap-1">
+                                {service.features.map((feature) => (
+                                  <Badge key={feature} variant="secondary" className="text-xs">
+                                    {feature}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Detected Environment */}
+                  {detectedEnvironment && (
+                    <div className="text-center space-y-4">
+                      <h2 className="text-2xl font-bold font-mono">
+                        Detected Environment: <span className={cn(
+                          "px-3 py-1 rounded font-bold",
+                          detectedEnvironment === "live" ? "bg-green-500 text-black" : "bg-blue-500 text-white"
+                        )}>
+                          {detectedEnvironment.toUpperCase()}
+                        </span>
+                      </h2>
+                      <p className="text-[#888] font-mono">
+                        {detectedEnvironment === "live"
+                          ? "Live credentials detected. You can process real payments."
+                          : "Test credentials detected. Great for development and testing."
+                        }
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Continue Button */}
+                  <div className="text-center">
+                    <Button
+                      onClick={handleExistingCheckComplete}
+                      className="bg-[#00ff88] text-black hover:bg-[#00dd77] font-mono font-bold px-8 py-3"
+                    >
+                      {existingServices.length > 0
+                        ? "Continue to Upload More Services"
+                        : "Continue to Upload .env File"
+                      }
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {step === "upload" && (
             <div className="space-y-8">
               <div className="text-center space-y-4">
@@ -481,6 +718,69 @@ const EnvOnboardingFlow = ({ onBack }: { onBack: () => void }) => {
           )}
         </div>
       </div>
+
+      {/* Edit Key Dialog Modal */}
+      {editingKey && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0a0a0a] border border-[#00ff88] rounded-lg max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-mono font-bold text-white">
+                Edit Key
+              </h3>
+              <button
+                onClick={() => setEditingKey(null)}
+                className="text-[#888] hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-mono text-[#888] mb-2">Service</p>
+                <p className="px-3 py-2 bg-[#1a1a1a] border border-[#222] rounded font-mono text-sm text-white capitalize">
+                  {editingKey.service}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm font-mono text-[#888] mb-2">Key Name</p>
+                <p className="px-3 py-2 bg-[#1a1a1a] border border-[#222] rounded font-mono text-sm text-white">
+                  {editingKey.key}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm font-mono text-[#888] mb-2">Key Value</p>
+                <input
+                  type="password"
+                  value={editingKey.value}
+                  onChange={(e) => setEditingKey({ ...editingKey, value: e.target.value })}
+                  placeholder="Enter new value"
+                  className="w-full px-3 py-2 bg-[#1a1a1a] border border-[#222] rounded font-mono text-sm text-white placeholder-[#666] focus:border-[#00ff88] focus:outline-none transition-colors"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button
+                onClick={() => setEditingKey(null)}
+                variant="outline"
+                className="flex-1 bg-transparent border-[#222] text-white hover:border-[#888] font-mono"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleKeyEditSubmit}
+                className="flex-1 bg-[#00ff88] text-black hover:bg-[#00dd77] font-mono font-bold"
+                disabled={!editingKey.value}
+              >
+                Update
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

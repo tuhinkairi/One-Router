@@ -58,7 +58,6 @@ class Settings:
         if not self.ENCRYPTION_KEY:
             if self.ENVIRONMENT == "development":
                 # Generate a new AES256 key for development
-                import base64
                 import os
                 key_bytes = os.urandom(32)
                 self.ENCRYPTION_KEY = base64.b64encode(key_bytes).decode('utf-8')

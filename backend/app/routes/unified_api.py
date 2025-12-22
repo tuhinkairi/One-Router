@@ -95,13 +95,24 @@ async def create_payment_order(
         # Get service adapter
         adapter = await request_router.get_adapter(user["id"], provider, db)
 
+        # Prepare notes with user_id for webhook identification
+        notes = request.notes or {}
+        notes["onerouter_user_id"] = str(user["id"])
+
         # Create order through adapter
-        result = await adapter.create_order(
-            amount=float(request.amount),
-            currency=request.currency,
-            receipt=request.receipt,
-            notes=request.notes
-        )
+        # Pass different parameters based on provider
+        order_kwargs = {
+            "amount": float(request.amount),
+            "currency": request.currency,
+            "receipt": request.receipt,
+        }
+
+        if provider == "razorpay":
+            order_kwargs["notes"] = notes
+        elif provider == "paypal":
+            order_kwargs["custom_id"] = str(user["id"])
+
+        result = await adapter.create_order(**order_kwargs)
 
         await transaction_logger.log_response(
             db=db,

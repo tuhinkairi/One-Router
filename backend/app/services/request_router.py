@@ -13,19 +13,37 @@ class RequestRouter:
     async def get_adapter(self, user_id: str, service: str, db: AsyncSession):
         """Get configured adapter for user"""
 
-        # Query the database directly to get the ServiceCredential object
+        # Get user's preferred environment for this service
+        preferred_env = await self._get_user_preferred_environment(user_id, service, db)
+
+        # Query the database for the credential in the preferred environment
         result = await db.execute(
             select(ServiceCredential).where(
                 ServiceCredential.user_id == user_id,
                 ServiceCredential.provider_name == service,
                 ServiceCredential.is_active == True,
-                ServiceCredential.environment == "test"  # Default to test for now
+                ServiceCredential.environment == preferred_env
             )
         )
         credential = result.scalar_one_or_none()
 
         if not credential:
-            raise Exception(f"Service {service} not configured for user {user_id}")
+            raise Exception(f"Service {service} not configured for user {user_id} in {preferred_env} environment")
+
+    async def _get_user_preferred_environment(self, user_id: str, service: str, db: AsyncSession) -> str:
+        """Get user's preferred environment for a service (defaults to 'test')"""
+        from ..models import User
+
+        result = await db.execute(
+            select(User.preferences).where(User.id == user_id)
+        )
+        preferences = result.scalar_one_or_none()
+
+        if preferences and "environments" in preferences and service in preferences["environments"]:  # type: ignore
+            return preferences["environments"][service]  # type: ignore
+
+        # Default to "test" if no preference set
+        return "test"
 
         # Decrypt credentials using the correct field name: encrypted_credential
         credentials = self.credential_manager.decrypt_credentials(
