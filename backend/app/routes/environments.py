@@ -77,32 +77,65 @@ async def switch_environment(
         }
     """
     try:
+        print(f"Switch environment request: service={service_name}, body={body}")
         environment = body.get("environment")
         if not environment or environment not in ["test", "live"]:
             raise HTTPException(status_code=400, detail="Environment must be 'test' or 'live'")
 
         user_id = str(user.get("id"))
+        print(f"User ID: {user_id}, Target environment: {environment}")
 
-        # Get user preferences
+        # First, find the active service credential for this user and service
+        result = await db.execute(
+            select(ServiceCredential).where(
+                ServiceCredential.user_id == user_id,
+                ServiceCredential.provider_name == service_name,
+                ServiceCredential.is_active == True
+            )
+        )
+        credential = result.scalar_one_or_none()
+
+        if not credential:
+            raise HTTPException(status_code=404, detail=f"No active credential found for {service_name}")
+
+        # Update the service credential environment
+        print(f"Updating credential {credential.id} for service {service_name} to environment {environment}")
+
+        stmt = (
+            update(ServiceCredential)
+            .where(ServiceCredential.id == credential.id)
+            .values(environment=environment)
+        )
+        result = await db.execute(stmt)
+        await db.commit()
+
+        print(f"Environment switch completed for {service_name}: {environment}")
+
+        # Also update user preferences for consistency
         result = await db.execute(
             select(User).where(User.id == user_id)
         )
         user_obj = result.scalar_one_or_none()
 
-        if not user_obj:
-            raise HTTPException(status_code=404, detail="User not found")
+        if user_obj:
+            # Update user preferences
+            if user_obj.preferences is None:
+                user_obj.preferences = {}  # type: ignore
 
-        # Update user preferences
-        if user_obj.preferences is None:
-            user_obj.preferences = {}  # type: ignore
+            if "environments" not in user_obj.preferences:  # type: ignore
+                user_obj.preferences["environments"] = {}  # type: ignore
 
-        if "environments" not in user_obj.preferences:  # type: ignore
-            user_obj.preferences["environments"] = {}  # type: ignore
+            user_obj.preferences["environments"][service_name] = environment  # type: ignore
+            flag_modified(user_obj, "preferences")
 
-        user_obj.preferences["environments"][service_name] = environment  # type: ignore
-        flag_modified(user_obj, "preferences")
+            await db.commit()
 
-        await db.commit()
+        # Verify the update worked
+        result = await db.execute(
+            select(ServiceCredential).where(ServiceCredential.id == credential.id)
+        )
+        updated_credential = result.scalar_one_or_none()
+        print(f"Verification: {service_name} environment is now {updated_credential.environment if updated_credential else 'UNKNOWN'}")
 
         return {
             "status": "switched",
@@ -116,6 +149,40 @@ async def switch_environment(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to switch environment: {str(e)}")
 
+
+@router.get("/api/debug/service-environments")
+async def debug_service_environments(
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Debug endpoint to check current service environments"""
+    try:
+        user_id = str(user.get("id"))
+
+        result = await db.execute(
+            select(ServiceCredential).where(
+                ServiceCredential.user_id == user_id,
+                ServiceCredential.is_active == True
+            )
+        )
+        credentials = result.scalars().all()
+
+        services = []
+        for cred in credentials:
+            services.append({
+                "id": str(cred.id),
+                "service_name": cred.provider_name,
+                "environment": cred.environment,
+                "created_at": cred.created_at.isoformat() if cred.created_at else None
+            })
+
+        return {
+            "user_id": user_id,
+            "services": services
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
 
 @router.get("/api/user/environment-preferences")
 async def get_environment_preferences(

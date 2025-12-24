@@ -7,14 +7,33 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Copy, Key, Plus, Trash2, Shield, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
+import DashboardLayout from '@/components/DashboardLayout';
+import { GlobalEnvironmentToggle } from '@/components/GlobalEnvironmentToggle';
+import { BentoGrid } from '@/components/ui/bento-grid';
+import { FeatureCard } from '@/components/ui/grid-feature-cards';
+import ApiKeysTable from '@/components/ApiKeysTable';
+import { EditApiKeyModal, ActivityModal } from '@/components/ApiKeyModals';
 
 interface APIKey {
   id: string;
-  name: string;
-  prefix: string;
+  key_name: string;
+  key_prefix: string;
   created_at: string;
-  last_used: string | null;
+  last_used_at: string | null;
   is_active: boolean;
+  rate_limit_per_min: number;
+  rate_limit_per_day: number;
+  environment: string;
+  usage?: Record<string, unknown>;
+}
+
+interface Service {
+  id: string;
+  name: string;
+  service_name: string;
+  status?: string;
+  environment: string;
+  [key: string]: unknown;
 }
 
 const LoadingDots = () => (
@@ -39,21 +58,39 @@ export default function APIKeysPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [editingKey, setEditingKey] = useState<APIKey | null>(null);
+  const [viewingActivity, setViewingActivity] = useState<APIKey | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const clientApiCall = useClientApiCall();
 
   useEffect(() => {
     loadAPIKeys();
+    loadServices();
   }, []);
 
   const loadAPIKeys = async () => {
     try {
-      // For now, just show empty state
-      setApiKeys([]);
+      setLoading(true);
+      const response = await clientApiCall('/api/keys');
+      setApiKeys(response.api_keys || []);
     } catch (error) {
       console.error('Failed to load API keys:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadServices = async () => {
+    try {
+      const response = await clientApiCall('/api/services');
+      setServices(response.services || []);
+    } catch (error) {
+      console.error('Failed to load services:', error);
+      setServices([]);
     }
   };
 
@@ -62,15 +99,85 @@ export default function APIKeysPage() {
     try {
       const data = await clientApiCall('/api/keys', {
         method: 'POST',
+        body: JSON.stringify({
+          key_name: 'New API Key',
+          rate_limit_per_min: 60,
+          rate_limit_per_day: 10000
+        })
       });
       setNewKey(data.api_key);
-      loadAPIKeys(); // Refresh the list
+      loadAPIKeys();
     } catch (error) {
       console.error('Failed to generate API key:', error);
       alert('Failed to generate API key. Please try again.');
     } finally {
       setGenerating(false);
     }
+  };
+
+  const handleEditKey = (key: APIKey) => {
+    setEditingKey(key);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (keyId: string, data: { key_name: string; rate_limit_per_min: number; rate_limit_per_day: number }) => {
+    setIsSaving(true);
+    try {
+      await clientApiCall(`/api/keys/${keyId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data)
+      });
+      await loadAPIKeys();
+      setIsEditModalOpen(false);
+    } catch (error) {
+      console.error('Failed to update API key:', error);
+      alert('Failed to update API key.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDisableKey = async (keyId: string) => {
+    try {
+      await clientApiCall(`/api/keys/${keyId}/disable`, {
+        method: 'POST'
+      });
+      await loadAPIKeys();
+    } catch (error) {
+      console.error('Failed to disable API key:', error);
+      alert('Failed to disable API key.');
+    }
+  };
+
+  const handleEnableKey = async (keyId: string) => {
+    try {
+      await clientApiCall(`/api/keys/${keyId}/enable`, {
+        method: 'POST'
+      });
+      await loadAPIKeys();
+    } catch (error) {
+      console.error('Failed to enable API key:', error);
+      alert('Failed to enable API key.');
+    }
+  };
+
+  const handleDeleteKey = async (keyId: string) => {
+    if (confirm('Are you sure you want to delete this API key? This action cannot be undone.')) {
+      try {
+        await clientApiCall(`/api/keys/${keyId}`, {
+          method: 'DELETE'
+        });
+        await loadAPIKeys();
+      } catch (error) {
+        console.error('Failed to delete API key:', error);
+        alert('Failed to delete API key.');
+      }
+    }
+  };
+
+  const handleViewActivity = (key: APIKey) => {
+    setViewingActivity(key);
+    setIsActivityModalOpen(true);
   };
 
   if (loading) {
@@ -85,101 +192,110 @@ export default function APIKeysPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <header className="bg-[#0a0a0a] shadow-sm border-b border-[#222]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <Key className="w-6 h-6 text-[#00ff88]" />
-                <h1 className="text-2xl font-bold font-mono">API Keys</h1>
+    <DashboardLayout>
+      <div className="text-white font-sans border-t border-white/10">
+        <header className="border-[#333] backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-l border-r border-white/10">
+            <div className="flex justify-between items-center py-6">
+              <div className="flex items-center space-x-4">
+                <GlobalEnvironmentToggle services={services} />
+                <div className="px-4 rounded-full text-sm font-medium text-cyan-500 transition-all duration-300 hover:bg-cyan-500/10">
+                  Free Plan
+                </div>
+                <Link href="/api-keys">
+                  <Button className="text-white hover:bg-[#1a1a1a] border-0 transition-all duration-300 hover:shadow-md hover:shadow-blue-300 hover:scale-105">
+                    Manage API Keys
+                  </Button>
+                </Link>
               </div>
-              <p className="text-sm text-[#888] font-mono">Manage your application access keys</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <Link href="/dashboard">
-                <Button
-                  variant="outline"
-                  className="bg-transparent border-[#222] text-white hover:border-[#00ff88] font-mono"
-                >
-                  ← Dashboard
-                </Button>
-              </Link>
-              <Button
-                onClick={generateAPIKey}
-                disabled={generating}
-                className="bg-[#00ff88] text-black hover:bg-[#00dd77] font-mono font-bold"
-              >
-                {generating ? (
-                  <>
-                    <LoadingDots />
-                    <span className="ml-2">Generating...</span>
-                  </>
-                ) : (
-                  <>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Generate New Key
-                  </>
-                )}
-              </Button>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          {newKey && (
-            <div className="mb-6 bg-[#ffbd2e]/10 border border-[#ffbd2e] rounded-lg p-4">
-              <div className="flex">
-                <div className="flex shrink-0">
-                  <AlertTriangle className="h-5 w-5 text-[#ffbd2e]" />
-                </div>
-                <div className="ml-3 flex-1">
-                  <h3 className="text-sm font-medium text-[#ffbd2e] font-mono">
-                    New API Key Generated
-                  </h3>
-                  <div className="mt-2 text-sm text-[#ffbd2e]">
-                    <div className="flex items-center gap-2 font-mono bg-[#1a1a1a] p-3 rounded border border-[#222]">
-                      <code className="flex-1 text-[#00ff88]">{newKey}</code>
-                      <button
-                        onClick={() => navigator.clipboard.writeText(newKey)}
-                        className="px-3 py-1 bg-[#00ff88] text-black rounded hover:bg-[#00dd77] transition-colors"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </button>
+        <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 relative">
+          <div className="pointer-events-none absolute inset-0 overflow-hidden border border-white/10 mask-[linear-gradient(to_bottom,white_0%,white_80%,transparent_100%)]">
+            {/* Top-left corner */}
+            <div className="absolute top-10 left-10 w-20 h-20 border-t border-l border-cyan-500/30"></div>
+            {/* Top-right corner */}
+            <div className="absolute top-10 right-10 w-20 h-20 border-t border-r border-cyan-500/30"></div>
+            {/* Bottom-left corner */}
+            <div className="absolute bottom-10 left-10 w-20 h-20 border-b border-l border-cyan-500/30"></div>
+            {/* Bottom-right corner */}
+            <div className="absolute bottom-10 right-10 w-20 h-20 border-b border-r border-cyan-500/30"></div>
+          </div>
+          <div className="relative z-10">
+            {/* API Keys Metrics */}
+            <BentoGrid items={[
+              {
+                title: "Total API Keys",
+                meta: `${apiKeys.length} active`,
+                description: "Manage your API keys and permissions for secure access",
+                icon: <Key className="w-4 h-4 text-cyan-500" />,
+                status: "Active",
+                tags: ["Authentication", "Security"],
+                colSpan: 2,
+                hasPersistentHover: true,
+              },
+              {
+                title: "Security Features",
+                meta: "3 enabled",
+                description: "Advanced security measures protecting your API access",
+                icon: <Shield className="w-4 h-4 text-cyan-500" />,
+                status: "Protected",
+                tags: ["Security", "Encryption"],
+              },
+            ]} />
+
+            {/* New Key Alert */}
+            {newKey && (
+              <Card className="bg-[#0a0a0a] border border-[#222] mb-8 hover:border-cyan-500 transition-all duration-300 hover:shadow-xl hover:shadow-cyan-500/10">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="flex shrink-0">
+                      <AlertTriangle className="h-6 w-6 text-cyan-500" />
                     </div>
-                    <p className="mt-2 font-mono">
-                      <strong>Important:</strong> Copy this key now. It will not be shown again for security reasons.
-                    </p>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-medium text-cyan-500 mb-2">
+                        New API Key Generated
+                      </h3>
+                      <div className="flex items-center gap-2 font-mono bg-[#1a1a1a] p-4 rounded border border-[#222] mb-4">
+                        <code className="flex-1 text-cyan-500 text-sm">{newKey}</code>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(newKey)}
+                          className="px-3 py-2 bg-cyan-500 text-black rounded hover:bg-cyan-600 transition-colors text-sm font-medium"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <p className="text-[#888] text-sm mb-4">
+                        <strong>Important:</strong> Copy this key now. It will not be shown again for security reasons.
+                      </p>
+                      <Button
+                        onClick={() => setNewKey(null)}
+                        variant="outline"
+                        className="bg-transparent border-[#222] text-white hover:border-cyan-500"
+                      >
+                        Dismiss
+                      </Button>
+                    </div>
                   </div>
-                  <div className="mt-4">
-                    <button
-                      onClick={() => setNewKey(null)}
-                      className="px-3 py-1 bg-[#ffbd2e] text-black text-sm rounded hover:bg-[#ffaa00] font-mono font-bold"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+                </CardContent>
+              </Card>
+            )}
 
-          {apiKeys.length === 0 ? (
-            <Card className="text-center py-12 bg-[#0a0a0a] border-[#222]">
-              <CardContent className="pt-6">
-                <div className="mx-auto w-16 h-16 bg-[#00ff88]/10 rounded-full flex items-center justify-center mb-6 border-2 border-[#00ff88]">
-                  <Key className="w-8 h-8 text-[#00ff88]" />
-                </div>
-                <h3 className="text-lg font-semibold text-white mb-2 font-mono">No API keys yet</h3>
-                <p className="text-[#888] mb-6 max-w-sm mx-auto font-mono">
-                  Generate your first API key to start integrating OneRouter into your applications.
-                </p>
+            {/* API Keys Table */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-white flex items-center gap-3">
+                  <div className="w-8 h-8  flex items-center justify-center ">
+                    🔑
+                  </div>
+                  Your API Keys
+                </h2>
                 <Button
                   onClick={generateAPIKey}
                   disabled={generating}
-                  className="bg-[#00ff88] text-black hover:bg-[#00dd77] font-mono font-bold"
+                  className="bg-cyan-500 text-black hover:bg-cyan-600 px-6 py-2"
                 >
                   {generating ? (
                     <>
@@ -189,104 +305,92 @@ export default function APIKeysPage() {
                   ) : (
                     <>
                       <Plus className="w-4 h-4 mr-2" />
-                      Generate Your First API Key
+                      Create API Key
                     </>
                   )}
                 </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="bg-[#0a0a0a] border border-[#222] rounded-lg overflow-hidden">
-              <div className="px-6 py-4 border-b border-[#222]">
-                <h3 className="text-lg font-medium text-white font-mono">Your API Keys</h3>
-                <p className="text-sm text-[#888] font-mono">Manage and monitor your API access</p>
               </div>
-              <div className="divide-y divide-[#222]">
-                {apiKeys.map((key) => (
-                  <div key={key.id} className="px-6 py-4 hover:bg-[#1a1a1a] transition-colors">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-[#00ff88]/10 rounded-lg flex items-center justify-center border border-[#00ff88]">
-                          <Key className="w-5 h-5 text-[#00ff88]" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-white font-mono">{key.name}</p>
-                            <Badge
-                              variant={key.is_active ? "default" : "destructive"}
-                              className={key.is_active ? "bg-[#00ff88] text-black border-0" : ""}
-                            >
-                              {key.is_active ? 'Active' : 'Inactive'}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-4 mt-1">
-                            <code className="text-xs bg-[#1a1a1a] border border-[#222] px-2 py-1 rounded font-mono text-[#00ff88]">
-                              {key.prefix}••••••••
-                            </code>
-                            <span className="text-xs text-[#888] font-mono">
-                              Created {new Date(key.created_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-white hover:text-[#00ff88]"
-                          onClick={() => navigator.clipboard.writeText(`${key.prefix}••••••••`)}
-                        >
-                          <Copy className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="bg-transparent border-[#222] text-white hover:border-[#00ff88]"
-                        >
-                          View Details
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="bg-[#ff3366] hover:bg-[#ff1a4f] text-white"
-                        >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          Revoke
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              
+              <ApiKeysTable
+                apiKeys={apiKeys}
+                onEdit={handleEditKey}
+                onDisable={handleDisableKey}
+                onEnable={handleEnableKey}
+                onDelete={handleDeleteKey}
+                onViewActivity={handleViewActivity}
+                loading={loading}
+              />
             </div>
-          )}
 
-          {/* Security Info */}
-          <div className="mt-6 grid md:grid-cols-3 gap-4">
-            <div className="flex items-start gap-3 p-4 bg-[#0a0a0a] border border-[#222] rounded-lg">
-              <Shield className="w-5 h-5 text-[#00ff88] flex shrink-0 mt-0.5" />
-              <div>
-                <h3 className="font-mono font-bold text-sm mb-1 text-white">AES-256 Encryption</h3>
-                <p className="text-xs text-[#888] font-mono">Your keys are encrypted at rest</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 p-4 bg-[#0a0a0a] border border-[#222] rounded-lg">
-              <Shield className="w-5 h-5 text-[#00ff88] flex shrink-0 mt-0.5" />
-              <div>
-                <h3 className="font-mono font-bold text-sm mb-1 text-white">Rate Limiting</h3>
-                <p className="text-xs text-[#888] font-mono">Automatic rate limiting protection</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 p-4 bg-[#0a0a0a] border border-[#222] rounded-lg">
-              <Shield className="w-5 h-5 text-[#00ff88] flex shrink-0 mt-0.5" />
-              <div>
-                <h3 className="font-mono font-bold text-sm mb-1 text-white">Audit Logging</h3>
-                <p className="text-xs text-[#888] font-mono">Complete access logs available</p>
-              </div>
+            {/* Security Features */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card className="bg-[#0a0a0a] border border-[#222] hover:border-cyan-500 transition-all duration-300 hover:shadow-xl hover:shadow-cyan-500/10">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-white flex items-center gap-3 text-xl">
+                    <div className="w-8 h-8 bg-cyan-500/20 rounded-lg flex items-center justify-center border border-cyan-500/30">
+                      🔒
+                    </div>
+                    AES-256 Encryption
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-[#888]">Your keys are encrypted at rest with military-grade security</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-[#0a0a0a] border border-[#222] hover:border-cyan-500 transition-all duration-300 hover:shadow-xl hover:shadow-cyan-500/10">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-white flex items-center gap-3 text-xl">
+                    <div className="w-8 h-8 bg-cyan-500/20 rounded-lg flex items-center justify-center border border-cyan-500/30">
+                      ⚡
+                    </div>
+                    Rate Limiting
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-[#888]">Automatic rate limiting protection prevents abuse</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-[#0a0a0a] border border-[#222] hover:border-cyan-500 transition-all duration-300 hover:shadow-xl hover:shadow-cyan-500/10">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-white flex items-center gap-3 text-xl">
+                    <div className="w-8 h-8 bg-cyan-500/20 rounded-lg flex items-center justify-center border border-cyan-500/30">
+                      📊
+                    </div>
+                    Audit Logging
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-[#888]">Complete access logs available for compliance</p>
+                </CardContent>
+              </Card>
             </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+
+        {/* Modals */}
+        <EditApiKeyModal
+          isOpen={isEditModalOpen}
+          apiKey={editingKey}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setEditingKey(null);
+          }}
+          onSave={handleSaveEdit}
+          loading={isSaving}
+        />
+
+        <ActivityModal
+          isOpen={isActivityModalOpen}
+          apiKey={viewingActivity}
+          onClose={() => {
+            setIsActivityModalOpen(false);
+            setViewingActivity(null);
+          }}
+          activity={viewingActivity?.usage}
+        />
+      </div>
+    </DashboardLayout>
   );
 }

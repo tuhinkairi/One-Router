@@ -538,3 +538,50 @@ async def get_cost_analytics(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Cost analytics error: {str(e)}")
+
+
+@router.get("/api/analytics/logs")
+async def get_transaction_logs(
+    limit: int = 100,
+    offset: int = 0,
+    status: Optional[str] = None,
+    user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get paginated transaction logs for the frontend logs page"""
+    try:
+        from ..models import TransactionLog
+        from sqlalchemy import select, desc
+
+        query = select(TransactionLog).where(
+            TransactionLog.user_id == user["id"]
+        ).order_by(desc(TransactionLog.created_at)).limit(limit).offset(offset)
+
+        if status:
+            query = query.where(TransactionLog.status == status)
+
+        result = await db.execute(query)
+        logs = result.scalars().all()
+
+        return {
+            "logs": [
+                {
+                    "id": str(log.id),
+                    "transaction_id": log.transaction_id,
+                    "service_name": log.service_name,
+                    "endpoint": log.endpoint,
+                    "http_method": log.http_method,
+                    "status": log.status,
+                    "response_status": log.response_status,
+                    "response_time_ms": log.response_time_ms,
+                    "created_at": log.created_at.isoformat()
+                }
+                for log in logs
+            ],
+            "total": len(logs),
+            "limit": limit,
+            "offset": offset
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Logs analytics error: {str(e)}")

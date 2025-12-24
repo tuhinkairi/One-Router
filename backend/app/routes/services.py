@@ -1,12 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from typing import List
+from sqlalchemy import select, update
+from sqlalchemy.orm.attributes import flag_modified
+from typing import List, Dict, Any
 from pydantic import BaseModel
+from datetime import datetime
 
 from ..database import get_db
 from ..auth.dependencies import get_current_user
 from ..models import ServiceCredential
+from ..services.credential_manager import CredentialManager
 
 router = APIRouter()
 
@@ -24,6 +27,11 @@ class ServicesResponse(BaseModel):
     services: List[ServiceInfo]
     has_services: bool
     total_count: int
+
+class UpdateCredentialsRequest(BaseModel):
+    """Request to update service credentials"""
+    credentials: Dict[str, str]
+    environment: str = "test"
 
 @router.get("/services", response_model=ServicesResponse)
 async def get_user_services(
@@ -113,3 +121,67 @@ async def get_service_status(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/services/{service_name}/credentials")
+async def update_service_credentials(
+    service_name: str,
+    request: UpdateCredentialsRequest,
+    user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Update credentials for a specific service
+
+    This allows users to update their API keys and credentials for connected services.
+    """
+    try:
+        user_id = str(user.get("id"))
+
+        # Find the existing credential for this service and user
+        result = await db.execute(
+            select(ServiceCredential).where(
+                ServiceCredential.user_id == user_id,
+                ServiceCredential.provider_name == service_name,
+                ServiceCredential.is_active == True
+            )
+        )
+        credential = result.scalar_one_or_none()
+
+        if not credential:
+            raise HTTPException(status_code=404, detail=f"No active credentials found for {service_name}")
+
+        # Validate the new credentials
+        cred_manager = CredentialManager()
+        validation_errors = cred_manager.validate_credentials_format(service_name, request.credentials)
+        if validation_errors:
+            raise HTTPException(status_code=400, detail=f"Invalid credentials: {validation_errors}")
+
+        # Encrypt and update the credentials
+        encrypted_creds = cred_manager.encrypt_credentials(request.credentials)
+
+        # Update the credential record
+        await db.execute(
+            update(ServiceCredential).where(
+                ServiceCredential.id == credential.id
+            ).values(
+                encrypted_credential=encrypted_creds,
+                environment=request.environment,
+                updated_at=datetime.utcnow()
+            )
+        )
+
+        await db.commit()
+
+        return {
+            "status": "updated",
+            "service_name": service_name,
+            "environment": request.environment,
+            "message": f"Credentials for {service_name} updated successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error updating credentials for {service_name}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update credentials: {str(e)}")

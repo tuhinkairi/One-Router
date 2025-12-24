@@ -300,157 +300,179 @@ const EnvOnboardingFlow = ({ onBack }: { onBack: () => void }) => {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
       {/* Header */}
-      <div className="border-b border-[#222] px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Shield className="w-6 h-6 text-[#00ff88]" />
-            <span className="font-mono text-lg font-bold">OneRouter</span>
+      <div className="border-b border-[#222] backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-l border-r border-white/10">
+          <div className="flex items-center justify-between py-6">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center border border-cyan-500/30">
+                <Shield className="w-4 h-4 text-cyan-500" />
+              </div>
+              <span className="font-semibold text-white text-lg">OneRouter</span>
+            </div>
+            <button
+              onClick={onBack}
+              className="text-[#888] hover:text-white transition-all duration-300 hover:scale-105 px-3 py-1 rounded-lg hover:bg-[#1a1a1a]"
+            >
+              ← Back to Dashboard
+            </button>
           </div>
-          <button
-            onClick={onBack}
-            className="text-[#888] hover:text-white font-mono text-sm transition-colors"
-          >
-            ← Back
-          </button>
         </div>
       </div>
 
       {/* Progress Steps */}
-      <div className="px-6 py-8 border-b border-[#222]">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-center justify-center gap-4">
+      <div className="px-4 sm:px-6 lg:px-8 py-8 border-b border-[#222]">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-center gap-3 md:gap-6">
             <div className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg border font-mono text-sm",
-              step === "check-existing" ? "border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88]" : "border-[#222] text-white"
+              "flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-300",
+              step === "check-existing"
+                ? "border-cyan-500 bg-cyan-500/10 text-cyan-500 shadow-lg shadow-cyan-500/20"
+                : "border-[#333] text-[#888] hover:border-cyan-500/50"
             )}>
               <CheckCircle2 className="w-4 h-4" />
-              Check Existing
+              <span className="hidden sm:inline">Check Existing</span>
+              <span className="sm:hidden">Check</span>
             </div>
-            <div className="w-8 h-[2px] bg-[#222]" />
+            <div className={cn("h-[2px] transition-all duration-300", step === "upload" || step === "review" || step === "complete" ? "bg-cyan-500 w-6 md:w-8" : "bg-[#333] w-4 md:w-6")} />
             <div className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg border font-mono text-sm",
-              step === "upload" ? "border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88]" : "border-[#222] text-[#888]"
+              "flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-300",
+              step === "upload"
+                ? "border-cyan-500 bg-cyan-500/10 text-cyan-500 shadow-lg shadow-cyan-500/20"
+                : step === "review" || step === "complete"
+                ? "border-cyan-500 bg-cyan-500/10 text-cyan-500"
+                : "border-[#333] text-[#888] hover:border-cyan-500/50"
             )}>
               <Upload className="w-4 h-4" />
-              Upload .env
+              <span className="hidden sm:inline">Upload .env</span>
+              <span className="sm:hidden">Upload</span>
             </div>
-            <div className="w-8 h-[2px] bg-[#222]" />
+            <div className={cn("h-[2px] transition-all duration-300", step === "review" || step === "complete" ? "bg-cyan-500 w-6 md:w-8" : "bg-[#333] w-4 md:w-6")} />
             <div className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg border font-mono text-sm",
-              step === "review" ? "border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88]" : "border-[#222] text-[#888]"
+              "flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-300",
+              step === "review"
+                ? "border-cyan-500 bg-cyan-500/10 text-cyan-500 shadow-lg shadow-cyan-500/20"
+                : step === "complete"
+                ? "border-cyan-500 bg-cyan-500/10 text-cyan-500"
+                : "border-[#333] text-[#888] hover:border-cyan-500/50"
             )}>
               <FileCode className="w-4 h-4" />
-              Review Services
+              <span className="hidden sm:inline">Review Services</span>
+              <span className="sm:hidden">Review</span>
             </div>
-            <div className="w-8 h-[2px] bg-[#222]" />
+            <div className={cn("h-[2px] transition-all duration-300", step === "complete" ? "bg-cyan-500 w-6 md:w-8" : "bg-[#333] w-4 md:w-6")} />
             <div className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg border font-mono text-sm",
-              step === "complete" ? "border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88]" : "border-[#222] text-[#888]"
+              "flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all duration-300",
+              step === "complete"
+                ? "border-cyan-500 bg-cyan-500/10 text-cyan-500 shadow-lg shadow-cyan-500/20"
+                : "border-[#333] text-[#888] hover:border-cyan-500/50"
             )}>
               <CheckCircle2 className="w-4 h-4" />
-              Complete
+              <span className="hidden sm:inline">Complete</span>
+              <span className="sm:hidden">Done</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="px-6 py-12">
-        <div className="max-w-5xl mx-auto">
-          {step === "check-existing" && (
-            <div className="space-y-8">
-              <div className="text-center space-y-4">
-                <h1 className="text-4xl md:text-5xl font-bold font-mono">
-                  Checking Your <span className="text-[#00ff88]">Setup</span>
-                </h1>
-                <p className="text-[#888] font-mono text-lg">
-                  Let us check what services are already configured
-                </p>
-              </div>
+      <div className="px-4 sm:px-6 lg:px-8 py-12 relative">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden border border-white/10 [mask-image:linear-gradient(to_bottom,white_0%,white_80%,transparent_100%)]">
+          {/* Top-left corner */}
+          <div className="absolute top-10 left-10 w-20 h-20 border-t border-l border-cyan-500/30"></div>
+          {/* Top-right corner */}
+          <div className="absolute top-10 right-10 w-20 h-20 border-t border-r border-cyan-500/30"></div>
+          {/* Bottom-left corner */}
+          <div className="absolute bottom-10 left-10 w-20 h-20 border-b border-l border-cyan-500/30"></div>
+          {/* Bottom-right corner */}
+          <div className="absolute bottom-10 right-10 w-20 h-20 border-b border-r border-cyan-500/30"></div>
+        </div>
+        <div className="relative z-10">
+          <div className="max-w-7xl mx-auto">
+            {step === "check-existing" && (
+              <div className="space-y-12">
+                <div className="text-center space-y-6">
+                  <h1 className="text-4xl md:text-5xl font-bold">
+                    Checking Your <span className="text-transparent bg-gradient-to-r from-cyan-500 to-blue-500 bg-clip-text">Setup</span>
+                  </h1>
+                  <p className="text-[#888] text-lg max-w-2xl mx-auto leading-relaxed">
+                    Let us check what services are already configured in your account
+                  </p>
+                </div>
 
               {checkingExisting ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#00ff88]"></div>
-                  <span className="ml-4 text-[#888] font-mono">Checking existing services...</span>
+                <div className="flex items-center justify-center py-16">
+                  <div className="text-center space-y-4">
+                    <div className="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin mx-auto"></div>
+                    <p className="text-[#888] font-medium">Checking existing services...</p>
+                  </div>
                 </div>
               ) : (
-                <div className="space-y-8">
+                <div className="space-y-12">
                   {/* Existing Services */}
                   {existingServices.length > 0 && (
-                    <div className="space-y-6">
-                      <h2 className="text-2xl font-bold font-mono text-center">
-                        Already Configured Services
-                      </h2>
-                      <div className="space-y-4">
+                    <div className="space-y-8">
+                      <div className="text-center">
+                        <h2 className="text-2xl font-bold text-white mb-2">
+                          Already Configured Services
+                        </h2>
+                        <p className="text-[#888]">These services are ready to use</p>
+                      </div>
+                      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                         {existingServices.map((service) => (
-                          <div key={service.name} className="p-6 bg-[#0a0a0a] border border-[#222] rounded-lg space-y-4">
-                            <div className="flex items-center gap-3 mb-3">
-                              <CheckCircle2 className="w-5 h-5 text-[#00ff88]" />
-                              <span className="font-medium text-white font-mono capitalize text-lg">
-                                {service.name}
-                              </span>
-                            </div>
+                          <div key={service.name} className="group relative">
+                            <div className="p-6 bg-[#1a1a1a] border border-[#222] rounded-xl hover:border-cyan-500 transition-all duration-300 hover:shadow-xl hover:bg-[#0f0f0f] hover:shadow-cyan-500/10">
+                              {/* Header */}
+                              <div className="flex items-center gap-4 mb-4">
+                                <div className="w-10 h-10 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-lg flex items-center justify-center border border-cyan-500/20 group-hover:from-cyan-500/20 group-hover:to-blue-500/20 transition-all duration-300">
+                                  <CheckCircle2 className="w-6 h-6 text-cyan-500" />
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-white text-lg capitalize mb-1">{service.name}</p>
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="secondary" className="bg-cyan-500/10 text-cyan-400 border-cyan-500/20 text-xs px-2 py-0.5">
+                                      Active
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
 
-                            {/* Test Environment */}
-                            <div className="border-l-2 border-blue-500 pl-4 py-2">
-                              <p className="text-sm font-mono text-[#888] mb-2 uppercase tracking-wider">Test Credentials</p>
-                              <div className="flex flex-wrap gap-2">
-                                {service.keys.filter(k => k.includes('TEST') || k.includes('test')).length > 0 ? (
-                                  service.keys
-                                    .filter(k => k.includes('TEST') || k.includes('test'))
-                                    .map((key) => {
-                                      const cleanKey = key.replace('_TEST', '').replace('_test', '');
-                                      return (
-                                        <button
-                                          key={key}
-                                          onClick={() => handleKeyEdit(service.name, cleanKey)}
-                                          className="px-3 py-1 bg-[#1a1a1a] border border-blue-500/50 rounded font-mono text-xs text-blue-400 hover:bg-blue-500/10 hover:border-blue-500 transition-colors cursor-pointer"
-                                        >
-                                          {cleanKey}
-                                        </button>
-                                      );
-                                    })
-                                ) : (
-                                  <p className="text-xs text-[#666] font-mono italic">No test keys added</p>
-                                )}
+                              {/* Credentials Summary */}
+                              <div className="space-y-3 mb-4">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-[#888]">Test Keys</span>
+                                  <span className="text-cyan-400 font-medium">
+                                    {service.keys.filter(k => k.includes('TEST') || k.includes('test')).length}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-[#888]">Live Keys</span>
+                                  <span className="text-cyan-400 font-medium">
+                                    {service.keys.filter(k => !k.includes('TEST') && !k.includes('test')).length}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Features */}
+                              <div className="pt-4 border-t border-[#333]">
+                                <div className="flex flex-wrap gap-1">
+                                  {service.features.slice(0, 3).map((feature) => (
+                                    <Badge key={feature} variant="secondary" className="bg-[#333] text-[#ccc] text-xs px-2 py-0.5">
+                                      {feature}
+                                    </Badge>
+                                  ))}
+                                  {service.features.length > 3 && (
+                                    <Badge variant="secondary" className="bg-[#333] text-[#ccc] text-xs px-2 py-0.5">
+                                      +{service.features.length - 3}
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
                             </div>
 
-                            {/* Live Environment */}
-                            <div className="border-l-2 border-green-500 pl-4 py-2">
-                              <p className="text-sm font-mono text-[#888] mb-2 uppercase tracking-wider">Live Credentials</p>
-                              <div className="flex flex-wrap gap-2">
-                                {service.keys.filter(k => !k.includes('TEST') && !k.includes('test')).length > 0 ? (
-                                  service.keys
-                                    .filter(k => !k.includes('TEST') && !k.includes('test'))
-                                    .map((key) => (
-                                      <button
-                                        key={key}
-                                        onClick={() => handleKeyEdit(service.name, key)}
-                                        className="px-3 py-1 bg-[#1a1a1a] border border-green-500/50 rounded font-mono text-xs text-green-400 hover:bg-green-500/10 hover:border-green-500 transition-colors cursor-pointer"
-                                      >
-                                        {key}
-                                      </button>
-                                    ))
-                                ) : (
-                                  <p className="text-xs text-[#666] font-mono italic">No live keys added</p>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Features */}
-                            <div>
-                              <p className="text-sm font-mono text-[#888] mb-2 uppercase tracking-wider">Features</p>
-                              <div className="flex flex-wrap gap-1">
-                                {service.features.map((feature) => (
-                                  <Badge key={feature} variant="secondary" className="text-xs">
-                                    {feature}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
+                            {/* Hover Effect */}
+                            <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-500/0 to-blue-500/0 group-hover:from-cyan-500/5 group-hover:to-blue-500/5 transition-all duration-300 pointer-events-none"></div>
                           </div>
                         ))}
                       </div>
@@ -459,21 +481,35 @@ const EnvOnboardingFlow = ({ onBack }: { onBack: () => void }) => {
 
                   {/* Detected Environment */}
                   {detectedEnvironment && (
-                    <div className="text-center space-y-4">
-                      <h2 className="text-2xl font-bold font-mono">
-                        Detected Environment: <span className={cn(
-                          "px-3 py-1 rounded font-bold",
-                          detectedEnvironment === "live" ? "bg-green-500 text-black" : "bg-blue-500 text-white"
+                    <div className="text-center space-y-6">
+                      <div className="inline-flex items-center gap-4 p-6 bg-[#1a1a1a] border border-[#222] rounded-xl">
+                        <div className="w-12 h-12 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-xl flex items-center justify-center border border-cyan-500/20">
+                          {detectedEnvironment === "live" ? (
+                            <Shield className="w-6 h-6 text-green-400" />
+                          ) : (
+                            <Zap className="w-6 h-6 text-cyan-500" />
+                          )}
+                        </div>
+                        <div className="text-left">
+                          <h2 className="text-xl font-bold text-white mb-1">
+                            {detectedEnvironment === "live" ? "Live Environment" : "Test Environment"}
+                          </h2>
+                          <p className="text-[#888] text-sm">
+                            {detectedEnvironment === "live"
+                              ? "Live credentials detected. Ready for production payments."
+                              : "Test credentials detected. Perfect for development and testing."
+                            }
+                          </p>
+                        </div>
+                        <Badge className={cn(
+                          "text-sm px-3 py-1 font-medium",
+                          detectedEnvironment === "live"
+                            ? "bg-green-500 text-black"
+                            : "bg-cyan-500 text-white"
                         )}>
                           {detectedEnvironment.toUpperCase()}
-                        </span>
-                      </h2>
-                      <p className="text-[#888] font-mono">
-                        {detectedEnvironment === "live"
-                          ? "Live credentials detected. You can process real payments."
-                          : "Test credentials detected. Great for development and testing."
-                        }
-                      </p>
+                        </Badge>
+                      </div>
                     </div>
                   )}
 
@@ -481,7 +517,7 @@ const EnvOnboardingFlow = ({ onBack }: { onBack: () => void }) => {
                   <div className="text-center">
                     <Button
                       onClick={handleExistingCheckComplete}
-                      className="bg-[#00ff88] text-black hover:bg-[#00dd77] font-mono font-bold px-8 py-3"
+                      className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600 px-10 py-4 rounded-xl transition-all duration-300 hover:shadow-xl hover:shadow-cyan-500/25 hover:scale-105 text-lg font-medium"
                     >
                       {existingServices.length > 0
                         ? "Continue to Upload More Services"
@@ -495,139 +531,177 @@ const EnvOnboardingFlow = ({ onBack }: { onBack: () => void }) => {
           )}
 
           {step === "upload" && (
-            <div className="space-y-8">
-              <div className="text-center space-y-4">
-                <h1 className="text-4xl md:text-5xl font-bold font-mono">
-                  Upload Your <span className="text-[#00ff88]">.env</span> File
+            <div className="space-y-12">
+              <div className="text-center space-y-6">
+                <h1 className="text-4xl md:text-5xl font-bold">
+                  Upload Your <span className="text-transparent bg-gradient-to-r from-cyan-500 to-blue-500 bg-clip-text">.env</span> File
                 </h1>
-                <p className="text-[#888] font-mono text-lg">
+                <p className="text-[#888] text-lg max-w-2xl mx-auto leading-relaxed">
                   We will automatically detect and configure your payment services
                 </p>
               </div>
 
               {/* Upload Area */}
-              <div
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-                className={cn(
-                  "relative border-2 border-dashed rounded-xl p-12 transition-all",
-                  dragActive ? "border-[#00ff88] bg-[#00ff88]/5" : "border-[#222] hover:border-[#00ff88]/50"
-                )}
-              >
-                <input
-                  type="file"
-                  accept=".env"
-                  onChange={handleFileInput}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
-                <div className="text-center space-y-4">
-                  <Upload className="w-16 h-16 mx-auto text-[#888]" />
-                  <div>
-                    <p className="font-mono text-white mb-2">
-                      {parsing ? "Parsing your file..." : file ? file.name : "Drop your .env file here"}
-                    </p>
-                    <p className="text-sm text-[#888] font-mono">
-                      or click to browse
-                    </p>
-                  </div>
-                  {parsing && (
-                    <div className="flex justify-center">
-                      <div className="flex gap-2">
-                        {Array.from({ length: 3 }).map((_, i) => (
-                          <div
-                            key={i}
-                            className="w-2 h-2 rounded-full bg-[#00ff88]"
-                            style={{
-                              animation: "pulse 1s ease-in-out infinite",
-                              animationDelay: `${i * 0.2}s`,
-                            }}
-                          />
-                        ))}
-                      </div>
-                    </div>
+              <div className="max-w-2xl mx-auto">
+                <div
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                  className={cn(
+                    "relative border-2 border-dashed rounded-2xl p-16 transition-all duration-300 hover:scale-105",
+                    dragActive
+                      ? "border-cyan-500 bg-cyan-500/5 shadow-lg shadow-cyan-500/20"
+                      : "border-[#333] hover:border-cyan-500/50 hover:bg-[#1a1a1a]"
                   )}
+                >
+                  <input
+                    type="file"
+                    accept=".env"
+                    onChange={handleFileInput}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="text-center space-y-6">
+                    <div className="w-20 h-20 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-2xl flex items-center justify-center border border-cyan-500/20 mx-auto">
+                      <Upload className="w-10 h-10 text-cyan-500" />
+                    </div>
+                    <div>
+                      <p className="text-white text-xl font-medium mb-2">
+                        {parsing ? "Parsing your file..." : file ? file.name : "Drop your .env file here"}
+                      </p>
+                      <p className="text-sm text-[#888]">
+                        or click to browse files
+                      </p>
+                    </div>
+                    {parsing && (
+                      <div className="flex justify-center">
+                        <div className="flex gap-2">
+                          {Array.from({ length: 3 }).map((_, i) => (
+                            <div
+                              key={i}
+                              className="w-3 h-3 rounded-full bg-cyan-500"
+                              style={{
+                                animation: "pulse 1s ease-in-out infinite",
+                                animationDelay: `${i * 0.2}s`,
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
               {/* Security Features */}
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="flex items-start gap-3 p-4 bg-[#0a0a0a] border border-[#222] rounded-lg">
-                  <Shield className="w-5 h-5 text-[#00ff88] flex shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className="font-mono font-bold text-sm mb-1">AES-256 Encryption</h3>
-                    <p className="text-xs text-[#888] font-mono">Your credentials are encrypted at rest</p>
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="p-6 bg-[#1a1a1a] border border-[#222] rounded-xl hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10">
+                  <div className="w-12 h-12 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-xl flex items-center justify-center border border-cyan-500/20 mb-4">
+                    <Shield className="w-6 h-6 text-cyan-500" />
                   </div>
+                  <h3 className="font-semibold text-white text-lg mb-2">AES-256 Encryption</h3>
+                  <p className="text-[#888] text-sm leading-relaxed">Your credentials are encrypted at rest with military-grade security</p>
                 </div>
-                <div className="flex items-start gap-3 p-4 bg-[#0a0a0a] border border-[#222] rounded-lg">
-                  <Zap className="w-5 h-5 text-[#00ff88] flex shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className="font-mono font-bold text-sm mb-1">Instant Detection</h3>
-                    <p className="text-xs text-[#888] font-mono">Auto-detect payment providers</p>
+                <div className="p-6 bg-[#1a1a1a] border border-[#222] rounded-xl hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10">
+                  <div className="w-12 h-12 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-xl flex items-center justify-center border border-cyan-500/20 mb-4">
+                    <Zap className="w-6 h-6 text-cyan-500" />
                   </div>
+                  <h3 className="font-semibold text-white text-lg mb-2">Instant Detection</h3>
+                  <p className="text-[#888] text-sm leading-relaxed">Auto-detect payment providers and validate configurations</p>
                 </div>
-                <div className="flex items-start gap-3 p-4 bg-[#0a0a0a] border border-[#222] rounded-lg">
-                  <FileCode className="w-5 h-5 text-[#00ff88] flex shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className="font-mono font-bold text-sm mb-1">Smart Parsing</h3>
-                    <p className="text-xs text-[#888] font-mono">Validates all credentials</p>
+                <div className="p-6 bg-[#1a1a1a] border border-[#222] rounded-xl hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10">
+                  <div className="w-12 h-12 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-xl flex items-center justify-center border border-cyan-500/20 mb-4">
+                    <FileCode className="w-6 h-6 text-cyan-500" />
                   </div>
+                  <h3 className="font-semibold text-white text-lg mb-2">Smart Parsing</h3>
+                  <p className="text-[#888] text-sm leading-relaxed">Validates all credentials and provides helpful error messages</p>
                 </div>
               </div>
             </div>
           )}
 
           {step === "review" && (
-            <div className="space-y-8">
-              <div className="text-center space-y-4">
-                <h1 className="text-4xl md:text-5xl font-bold font-mono">
-                  Detected <span className="text-[#00ff88]">{detectedServices.length}</span> Services
+            <div className="space-y-12">
+              <div className="text-center space-y-6">
+                <h1 className="text-4xl md:text-5xl font-bold">
+                  Detected <span className="text-transparent bg-gradient-to-r from-cyan-500 to-blue-500 bg-clip-text">{detectedServices.length}</span> Services
                 </h1>
-                <p className="text-[#888] font-mono text-lg">
+                <p className="text-[#888] text-lg max-w-2xl mx-auto leading-relaxed">
                   Review and configure your integrations
                 </p>
               </div>
 
               {/* Detected Services */}
-              <div className="space-y-4">
+              <div className="space-y-8">
                 {detectedServices.filter(s => s.status === "supported").length > 0 && (
-                  <div className="space-y-3">
-                    <h2 className="font-mono text-sm text-[#888] uppercase tracking-wider">Supported Services</h2>
-                    {detectedServices.filter(s => s.status === "supported").map((service) => (
-                      <div key={service.name} className="bg-[#0a0a0a] border border-[#00ff88]/30 rounded-lg p-6">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <CheckCircle2 className="w-6 h-6 text-[#00ff88]" />
-                            <div>
-                              <h3 className="font-mono font-bold text-lg capitalize">{service.name}</h3>
-                              <p className="text-sm text-[#888] font-mono">{service.keys.length} credentials detected</p>
+                  <div className="space-y-6">
+                    <div className="text-center mb-8">
+                      <h2 className="text-xl font-semibold text-white mb-2">Supported Services</h2>
+                      <p className="text-[#888]">These services will be configured for your account</p>
+                    </div>
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                      {detectedServices.filter(s => s.status === "supported").map((service) => (
+                        <div key={service.name} className="group relative">
+                          <div className="p-6 bg-[#1a1a1a] border border-cyan-500/30 rounded-xl hover:border-cyan-500 transition-all duration-300 hover:shadow-xl hover:bg-[#0f0f0f] hover:shadow-cyan-500/10">
+                            {/* Header */}
+                            <div className="flex items-center gap-4 mb-4">
+                              <div className="w-12 h-12 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 rounded-xl flex items-center justify-center border border-cyan-500/20">
+                                <CheckCircle2 className="w-7 h-7 text-cyan-500" />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-white text-lg capitalize mb-1">{service.name}</p>
+                                <Badge className="bg-cyan-500 text-white border-0 text-xs">Ready to Configure</Badge>
+                              </div>
+                            </div>
+
+                            {/* Credentials Count */}
+                            <div className="mb-4">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-[#888]">Credentials Detected</span>
+                                <span className="text-cyan-400 font-medium">{service.keys.length}</span>
+                              </div>
+                            </div>
+
+                            {/* Keys Preview */}
+                            <div className="mb-4">
+                              <p className="text-sm text-[#888] mb-2">Keys Found:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {service.keys.slice(0, 2).map((key) => (
+                                  <Badge key={key} variant="secondary" className="bg-[#333] text-[#ccc] text-xs px-2 py-0.5">
+                                    {key.length > 15 ? `${key.substring(0, 15)}...` : key}
+                                  </Badge>
+                                ))}
+                                {service.keys.length > 2 && (
+                                  <Badge variant="secondary" className="bg-[#333] text-[#ccc] text-xs px-2 py-0.5">
+                                    +{service.keys.length - 2}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Features */}
+                            <div className="pt-4 border-t border-[#333]">
+                              <p className="text-sm text-[#888] mb-2">Features:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {service.features.slice(0, 3).map((feature) => (
+                                  <Badge key={feature} variant="secondary" className="bg-cyan-500/10 text-cyan-400 border-cyan-500/20 text-xs px-2 py-0.5">
+                                    {feature}
+                                  </Badge>
+                                ))}
+                                {service.features.length > 3 && (
+                                  <Badge variant="secondary" className="bg-cyan-500/10 text-cyan-400 border-cyan-500/20 text-xs px-2 py-0.5">
+                                    +{service.features.length - 3}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          <Badge className="bg-[#00ff88] text-black border-0">Ready</Badge>
+
+                          {/* Hover Effect */}
+                          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-500/0 to-blue-500/0 group-hover:from-cyan-500/5 group-hover:to-blue-500/5 transition-all duration-300 pointer-events-none"></div>
                         </div>
-                        <div className="space-y-2">
-                          <p className="text-sm font-mono text-[#888]">Detected Keys:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {service.keys.map((key) => (
-                              <span key={key} className="px-3 py-1 bg-[#1a1a1a] border border-[#222] rounded font-mono text-xs text-[#00ff88]">
-                                {key}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="mt-4">
-                          <p className="text-sm font-mono text-[#888] mb-2">Available Features:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {service.features.map((feature) => (
-                              <span key={feature} className="px-3 py-1 bg-[#1a1a1a] border border-[#00ff88]/30 rounded font-mono text-xs text-white">
-                                {feature}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -668,44 +742,44 @@ const EnvOnboardingFlow = ({ onBack }: { onBack: () => void }) => {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-4 justify-center pt-4">
+              <div className="flex gap-6 justify-center pt-8">
                 <Button
                   onClick={() => setStep("upload")}
                   variant="outline"
-                  className="bg-transparent border-[#222] text-white hover:border-[#00ff88] font-mono"
+                  className="bg-transparent border-[#333] text-[#888] hover:border-cyan-500 hover:text-cyan-400 px-6 py-3 rounded-xl transition-all duration-300 hover:bg-cyan-500/5"
                 >
                   Upload Different File
                 </Button>
                 <Button
                   onClick={handleContinue}
-                  className="bg-[#00ff88] text-black hover:bg-[#00dd77] font-mono font-bold"
+                  className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600 px-10 py-4 rounded-xl transition-all duration-300 hover:shadow-xl hover:shadow-cyan-500/25 hover:scale-105 text-lg font-medium"
                   disabled={detectedServices.filter(s => s.status === "supported").length === 0}
                 >
-                  Continue to Dashboard →
+                  Configure Services →
                 </Button>
               </div>
             </div>
           )}
 
           {step === "complete" && (
-            <div className="text-center space-y-8 py-12">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[#00ff88]/10 border-2 border-[#00ff88]">
-                <CheckCircle2 className="w-10 h-10 text-[#00ff88]" />
+            <div className="text-center space-y-12 py-16">
+              <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border-2 border-cyan-500/30">
+                <CheckCircle2 className="w-12 h-12 text-cyan-500" />
               </div>
-              <div className="space-y-4">
-                <h1 className="text-4xl md:text-5xl font-bold font-mono">
-                  <span className="text-[#00ff88]">Onboarding Complete!</span>
+              <div className="space-y-6">
+                <h1 className="text-4xl md:text-5xl font-bold">
+                  <span className="text-transparent bg-gradient-to-r from-cyan-500 to-blue-500 bg-clip-text">Onboarding Complete!</span>
                 </h1>
-                <p className="text-[#888] font-mono text-lg">
-                  Your services are configured and ready to use
+                <p className="text-[#888] text-lg max-w-2xl mx-auto leading-relaxed">
+                  Your services are configured and ready to use. You're all set to start processing payments.
                 </p>
               </div>
               <div className="flex justify-center">
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                   {Array.from({ length: 3 }).map((_, i) => (
                     <div
                       key={i}
-                      className="w-2 h-2 rounded-full bg-[#00ff88]"
+                      className="w-3 h-3 rounded-full bg-cyan-500"
                       style={{
                         animation: "pulse 1s ease-in-out infinite",
                         animationDelay: `${i * 0.2}s`,
@@ -718,6 +792,7 @@ const EnvOnboardingFlow = ({ onBack }: { onBack: () => void }) => {
           )}
         </div>
       </div>
+    </div>
 
       {/* Edit Key Dialog Modal */}
       {editingKey && (

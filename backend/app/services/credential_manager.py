@@ -1,6 +1,7 @@
 import json
 import logging
 import secrets
+import uuid
 from typing import Dict, Any, Optional, List
 from cryptography.fernet import Fernet
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -245,7 +246,9 @@ class CredentialManager:
         key_prefix = raw_key[:8]  # First 8 chars as prefix for identification
 
         # Create database record
+        from datetime import datetime
         api_key_record = ApiKey(
+            id=uuid.uuid4(),
             user_id=user_id,
             key_hash=key_hash,
             key_name=key_name,
@@ -254,6 +257,7 @@ class CredentialManager:
             rate_limit_per_min=rate_limit_per_min,
             rate_limit_per_day=rate_limit_per_day,
             expires_at=expires_at,
+            created_at=datetime.utcnow(),
             is_active=True
         )
 

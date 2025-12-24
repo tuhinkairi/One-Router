@@ -125,6 +125,10 @@ app.include_router(webhooks_router, tags=["webhooks"])
 from .routes.analytics import router as analytics_router
 app.include_router(analytics_router, tags=["analytics"])
 
+# Import and include API keys router
+from .routes.api_keys import router as api_keys_router
+app.include_router(api_keys_router, tags=["api-keys"])
+
 # Health check endpoint
 @app.get("/")
 async def root():
