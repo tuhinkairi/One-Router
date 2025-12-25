@@ -189,19 +189,27 @@ class CredentialManager:
         db: AsyncSession,
         user_id: str,
         key_name: str = "Default Key",
-        rate_limit_per_min: int = 60,
-        rate_limit_per_day: int = 10000,
+        key_environment: str = "test",  # New parameter for environment
+        rate_limit_per_min: int = None,  # Make optional to use environment defaults
+        rate_limit_per_day: int = None,  # Make optional to use environment defaults
         expires_at: Optional[datetime] = None
     ) -> Dict[str, Any]:
-        """Generate a new API key for a user"""
+        """Generate a new API key for a user with environment support"""
         import secrets
         import hashlib
         from ..models import ApiKey
 
-        # Generate secure API key
-        raw_key = f"unf_{secrets.token_urlsafe(32)}"
+        # Set environment-specific rate limits if not provided
+        if rate_limit_per_min is None:
+            rate_limit_per_min = 1000 if key_environment == "test" else 100
+        if rate_limit_per_day is None:
+            rate_limit_per_day = 100000 if key_environment == "test" else 10000
+
+        # Generate secure API key with environment prefix
+        env_prefix = "unf_test" if key_environment == "test" else "unf_live"
+        raw_key = f"{env_prefix}_{secrets.token_urlsafe(32)}"
         key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
-        key_prefix = raw_key[:8]  # First 8 chars as prefix for identification
+        key_prefix = raw_key[:12]  # First 12 chars as prefix (includes env indicator)
 
         # Create database record
         from datetime import datetime
@@ -211,7 +219,7 @@ class CredentialManager:
             key_hash=key_hash,
             key_name=key_name,
             key_prefix=key_prefix,
-            environment="production",  # Default to production
+            environment=key_environment,
             rate_limit_per_min=rate_limit_per_min,
             rate_limit_per_day=rate_limit_per_day,
             expires_at=expires_at,
@@ -227,6 +235,7 @@ class CredentialManager:
             "api_key": raw_key,
             "key_id": str(api_key_record.id),
             "key_name": key_name,
+            "environment": key_environment,
             "created_at": api_key_record.created_at.isoformat() if api_key_record.created_at else None
         }
 
@@ -376,6 +385,48 @@ class CredentialManager:
             "created_at": cred.created_at,
             "is_active": cred.is_active
         } for cred in credentials]
+
+    async def get_credentials(
+        self,
+        db: AsyncSession,
+        user_id: str,
+        provider_name: str,
+        environment: str = "test"
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get decrypted credentials for a specific user, provider, and environment.
+        
+        Args:
+            db: Database session
+            user_id: User ID (UUID string)
+            provider_name: Provider/service name (e.g., "razorpay", "paypal")
+            environment: Environment name ("test" or "live")
+        
+        Returns:
+            Decrypted credentials dictionary or None if not found
+        """
+        try:
+            from sqlalchemy import select
+            
+            result = await db.execute(
+                select(ServiceCredential).where(
+                    ServiceCredential.user_id == user_id,
+                    ServiceCredential.provider_name == provider_name,
+                    ServiceCredential.environment == environment,
+                    ServiceCredential.is_active == True
+                )
+            )
+            credential = result.scalar_one_or_none()
+            
+            if not credential:
+                logger.warning(f"No active credentials found for user {user_id}, provider {provider_name}, environment {environment}")
+                return None
+            
+            return self.decrypt_credentials(credential.encrypted_credential)
+            
+        except Exception as e:
+            logger.error(f"Error retrieving credentials: {e}")
+            return None
 
     def validate_credentials_format(self, service_name: str, credentials: Dict[str, str]) -> Dict[str, str]:
         """Validate credential format for a service"""

@@ -16,8 +16,9 @@ router = APIRouter(prefix="/api/keys", tags=["api-keys"])
 # Request/Response Models
 class CreateApiKeyRequest(BaseModel):
     key_name: str
-    rate_limit_per_min: int = 60
-    rate_limit_per_day: int = 10000
+    environment: str = "test"  # Add environment parameter with default
+    rate_limit_per_min: Optional[int] = None  # Make optional for environment defaults
+    rate_limit_per_day: Optional[int] = None  # Make optional for environment defaults
 
 class UpdateApiKeyRequest(BaseModel):
     key_name: Optional[str] = None
@@ -68,6 +69,7 @@ async def create_api_key(
             db=db,
             user_id=user["id"],
             key_name=request.key_name,
+            key_environment=request.environment,
             rate_limit_per_min=request.rate_limit_per_min,
             rate_limit_per_day=request.rate_limit_per_day
         )
@@ -77,6 +79,7 @@ async def create_api_key(
             "api_key": result["api_key"],
             "key_id": result["key_id"],
             "key_name": result["key_name"],
+            "environment": result["environment"],
             "created_at": result["created_at"]
         }
     except Exception as e:

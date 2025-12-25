@@ -45,18 +45,39 @@ class RequestRouter:
         # Default to "test" if no preference set
         return "test"
 
+    async def get_adapter(self, user_id: str, service: str, db: AsyncSession, target_environment: str = "test"):
+        """Get configured adapter for user with explicit environment"""
+        
+        # Query the database for the credential in the target environment
+        result = await db.execute(
+            select(ServiceCredential).where(
+                ServiceCredential.user_id == user_id,
+                ServiceCredential.provider_name == service,
+                ServiceCredential.is_active == True,
+                ServiceCredential.environment == target_environment
+            )
+        )
+        credential = result.scalar_one_or_none()
+
+        if not credential:
+            raise Exception(f"Service {service} not configured for user {user_id} in {target_environment} environment")
+
         # Decrypt credentials using the correct field name: encrypted_credential
         credentials = self.credential_manager.decrypt_credentials(
-            str(credential.encrypted_credential)
+            credential.encrypted_credential
         )
 
         # Create and return adapter based on service
         if service == "razorpay":
             from ..adapters.razorpay import RazorpayAdapter
-            return RazorpayAdapter(credentials)
+            adapter = RazorpayAdapter()
+            adapter.configure(credentials, target_environment)
+            return adapter
         elif service == "paypal":
             from ..adapters.paypal import PayPalAdapter
-            return PayPalAdapter(credentials)
+            adapter = PayPalAdapter()
+            adapter.configure(credentials, target_environment)
+            return adapter
         else:
             raise Exception(f"Unsupported service: {service}")
 
