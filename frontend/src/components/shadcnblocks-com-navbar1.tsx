@@ -22,6 +22,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { JSX } from "react";
 
 interface MenuItem {
   title: string;

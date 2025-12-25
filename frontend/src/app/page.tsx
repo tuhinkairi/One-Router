@@ -26,7 +26,10 @@ export default function Home() {
             <div className="w-full h-full flex justify-between items-center px-4 md:px-8 relative z-10">
               {/* Left - Logo */}
               <div className="flex items-center gap-2 border-r border-[#222] pr-4 md:pr-8 flex-1">
+                <div className="w-8 h-8 bg-gradient-to-br from-black  to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-300 hover:shadow-cyan-500/25 hover:scale-110">
+                  </div>
                 <div className="font-bold text-sm md:text-lg font-mono">
+                  
                   <span className="text-white">ONE</span>
                   <span className="text-cyan-400">ROUTER</span>
                 </div>
@@ -127,9 +130,12 @@ export default function Home() {
         {/* Hero Section - Better Auth Style */}
         <section className="relative px-4 sm:px-6 pt-8 sm:pt-12 pb-12 sm:pb-20 overflow-hidden">
           {/* Grid Background */}
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none"></div>
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff1a_1px,transparent_3px),linear-gradient(to_bottom,#ffffff1a_1px,transparent_3px)] bg-[size:40px_40px] pointer-events-none"></div>
           
-          <div className="max-w-7xl mx-auto relative z-10">
+          {/* Radial Diffusion Overlay - Fades gridlines at edges */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.8)_60%,rgba(0,0,0,0.8)_100%)] pointer-events-none"></div>
+          
+          <div className="max-w-6xl mx-auto relative z-10">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-12 items-center">
               {/* Left Side - Content */}
               <div>
@@ -153,7 +159,7 @@ export default function Home() {
                 </p>
 
                 {/* Code Snippet */}
-                <div className="bg-[#0a0a0a] border border-[#222] rounded-lg p-3 sm:p-4 mb-8 font-mono text-xs sm:text-sm overflow-x-auto">
+                <div className="bg-black border border-[#0a0a0a] rounded-lg p-3 sm:p-4 mb-8 font-mono text-xs sm:text-sm overflow-x-auto">
                   <div className="text-[#888] mb-3">npm install @onerouter/sdk</div>
                   <div className="text-[#00ff88]">✓ Ready to connect all services</div>
                 </div>
@@ -190,9 +196,9 @@ export default function Home() {
 
               {/* Right Side - Code Example */}
               <div className="hidden lg:block">
-                <div className="bg-[#0a0a0a] border border-[#222] rounded-xl overflow-hidden shadow-2xl">
+                <div className="bg-[#000] border border-[#222] rounded-xl overflow-hidden shadow-2xl">
                   {/* Header */}
-                  <div className="bg-[#1a1a1a] border-b border-[#222] px-4 py-3 flex items-center justify-between">
+                  <div className="bg-[#0a0a0a] border-b border-[#222] px-4 py-3 flex items-center justify-between">
                     <div className="flex gap-2">
                       <div className="w-3 h-3 rounded-full bg-[#ff6b6b]"></div>
                       <div className="w-3 h-3 rounded-full bg-[#ffd93d]"></div>
@@ -249,7 +255,7 @@ export default function Home() {
         </section>
 
         {/* Service Integrations - Marquee */}
-        <section className="px-4 sm:px-6 py-12 sm:py-20 bg-[#050505]">
+        <section className="px-4 sm:px-6 py-12 sm:py-20 bg-[#000]">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-center mb-4 font-mono">
               Service <span className="text-[#00ff88]">Matrix</span>

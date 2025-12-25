@@ -108,17 +108,19 @@ export default async function DashboardPage() {
         </header>
 
         <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 relative">
-          <div className="pointer-events-none absolute inset-0 overflow-hidden border border-white/10 [mask-image:linear-gradient(to_bottom,white_0%,white_80%,transparent_100%)]">
-            {/* Top-left corner */}
-            <div className="absolute top-10 left-10 w-20 h-20 border-t border-l border-cyan-500/30"></div>
-            {/* Top-right corner */}
-            <div className="absolute top-10 right-10 w-20 h-20 border-t border-r border-cyan-500/30"></div>
-            {/* Bottom-left corner */}
-            <div className="absolute bottom-10 left-10 w-20 h-20 border-b border-l border-cyan-500/30"></div>
-            {/* Bottom-right corner */}
-            <div className="absolute bottom-10 right-10 w-20 h-20 border-b border-r border-cyan-500/30"></div>
-          </div>
+
           <div className="relative z-10">
+            <div className="pointer-events-none absolute inset-0 overflow-hidden border border-white/10 [mask-image:linear-gradient(to_bottom,white_0%,white_80%,transparent_100%)]">
+              {/* Top-left corner */}
+              <div className="absolute top-10 left-10 w-20 h-20 border-t border-l border-cyan-500/30"></div>
+              {/* Top-right corner */}
+              <div className="absolute top-10 right-10 w-20 h-20 border-t border-r border-cyan-500/30"></div>
+              {/* Bottom-left corner */}
+              <div className="absolute bottom-10 left-10 w-20 h-20 border-b border-l border-cyan-500/30"></div>
+              {/* Bottom-right corner */}
+              <div className="absolute bottom-10 right-10 w-20 h-20 border-b border-r border-cyan-500/30"></div>
+            </div>
+
             <div className="space-y-8">
               {/* Metrics Cards - Bento Grid */}
               <BentoGrid items={[
@@ -153,12 +155,12 @@ export default async function DashboardPage() {
 
 
            {/* Connected Services */}
-           <Card className="bg-[#0a0a0a] border border-[#222] mb-8 hover:border-cyan-500 transition-all duration-300 hover:shadow-xl hover:shadow-cyan-500/10">
+           <Card className="bg-black border border-black mb-8 hover:border-black transition-all duration-300 hover:shadow-xl hover:shadow-cyan-500/10">
              <CardHeader className="pb-6">
                <div className="flex items-center justify-between">
                  <CardTitle className="text-white flex items-center gap-3 text-xl">
                    <div className="w-10 h-10 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center border border-cyan-500/30">
-                     <Shield className="w-5 h-5 text-cyan-500" />
+                     <Shield className="w-5 h-5" />
                    </div>
                    Connected Services
                  </CardTitle>
@@ -189,7 +191,7 @@ export default async function DashboardPage() {
                    {services.map((service: Service) => (
                      <div key={service.id} className="group relative">
                        {/* Service Card */}
-                       <div className="p-5 bg-[#1a1a1a] border border-[#222] rounded-xl hover:border-cyan-500 transition-all duration-300 hover:shadow-xl hover:bg-[#0f0f0f] hover:shadow-cyan-500/10">
+                       <div className="p-5 bg-[#0a0a0a] border border-[#222] rounded-xl  transition-all duration-300 hover:shadow-xl hover:bg-[#0f0f0f] hover:shadow-cyan-500/10">
                          {/* Header with Service Info and Actions */}
                          <div className="flex items-start justify-between mb-4">
                            <div className="flex items-center gap-4">

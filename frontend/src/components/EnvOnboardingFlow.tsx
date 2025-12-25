@@ -378,17 +378,19 @@ const EnvOnboardingFlow = ({ onBack }: { onBack: () => void }) => {
 
       {/* Main Content */}
       <div className="px-4 sm:px-6 lg:px-8 py-12 relative">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden border border-white/10 [mask-image:linear-gradient(to_bottom,white_0%,white_80%,transparent_100%)]">
-          {/* Top-left corner */}
-          <div className="absolute top-10 left-10 w-20 h-20 border-t border-l border-cyan-500/30"></div>
-          {/* Top-right corner */}
-          <div className="absolute top-10 right-10 w-20 h-20 border-t border-r border-cyan-500/30"></div>
-          {/* Bottom-left corner */}
-          <div className="absolute bottom-10 left-10 w-20 h-20 border-b border-l border-cyan-500/30"></div>
-          {/* Bottom-right corner */}
-          <div className="absolute bottom-10 right-10 w-20 h-20 border-b border-r border-cyan-500/30"></div>
-        </div>
+
         <div className="relative z-10">
+          <div className="pointer-events-none absolute inset-0 overflow-hidden border border-white/10 [mask-image:linear-gradient(to_bottom,white_0%,white_80%,transparent_100%)]">
+            {/* Top-left corner */}
+            <div className="absolute top-10 left-10 w-20 h-20 border-t border-l border-cyan-500/30"></div>
+            {/* Top-right corner */}
+            <div className="absolute top-10 right-10 w-20 h-20 border-t border-r border-cyan-500/30"></div>
+            {/* Bottom-left corner */}
+            <div className="absolute bottom-10 left-10 w-20 h-20 border-b border-l border-cyan-500/30"></div>
+            {/* Bottom-right corner */}
+            <div className="absolute bottom-10 right-10 w-20 h-20 border-b border-r border-cyan-500/30"></div>
+          </div>
+
           <div className="max-w-7xl mx-auto">
             {step === "check-existing" && (
               <div className="space-y-12">
