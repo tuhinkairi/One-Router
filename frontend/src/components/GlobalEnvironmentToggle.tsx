@@ -2,10 +2,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useClientApiCall } from "@/lib/api-client";
-import { loadCsrfToken, fetchWithCsrf } from "@/lib/csrf";
+import { fetchWithCsrf } from "@/lib/csrf";
 import { Loader2, Zap, Shield } from "lucide-react";
 
 interface Service {
@@ -23,12 +24,31 @@ export function GlobalEnvironmentToggle({ services, onGlobalSwitch }: GlobalEnvi
   const [isSwitching, setIsSwitching] = useState(false);
   const [currentMode, setCurrentMode] = useState<"test" | "live" | "mixed">("test");
   const [manualOverride, setManualOverride] = useState<"test" | "live" | null>(null);
+  const { getToken } = useAuth();
   const apiClient = useClientApiCall();
 
   // Load CSRF token on component mount for state-changing operations
   useEffect(() => {
-    loadCsrfToken().catch(err => console.warn('Failed to preload CSRF token:', err));
-  }, []);
+    const loadTokenWithAuth = async () => {
+      try {
+        const token = await getToken();
+        // Load CSRF token with authentication context
+        const response = await fetch('/api/csrf/token', {
+          credentials: 'include',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (!response.ok) {
+          console.warn('Failed to fetch CSRF token:', response.statusText);
+          return;
+        }
+        const data = await response.json();
+        console.log('CSRF token loaded successfully');
+      } catch (error) {
+        console.warn('Failed to preload CSRF token:', error);
+      }
+    };
+    loadTokenWithAuth();
+  }, [getToken]);
 
   // Determine current global mode
   useEffect(() => {
@@ -63,6 +83,13 @@ export function GlobalEnvironmentToggle({ services, onGlobalSwitch }: GlobalEnvi
   const switchAllServices = async (targetEnvironment: "test" | "live") => {
     if (services.length === 0) return;
     
+    // Get Clerk token for authentication
+    const token = await getToken();
+    if (!token) {
+      alert('Authentication failed. Please log in again.');
+      return;
+    }
+    
     // Immediately update UI to show the target mode
     setManualOverride(targetEnvironment);
     setCurrentMode(targetEnvironment);
@@ -79,7 +106,7 @@ export function GlobalEnvironmentToggle({ services, onGlobalSwitch }: GlobalEnvi
           environment: targetEnvironment,
           service_ids: services.map(s => s.id)
         })
-      });
+      }, token);
 
       if (!switchResponse.ok) {
         throw new Error(`Switch failed: ${switchResponse.statusText}`);
@@ -92,7 +119,7 @@ export function GlobalEnvironmentToggle({ services, onGlobalSwitch }: GlobalEnvi
       const verifyResponse = await fetchWithCsrf('/api/services/verify-environment', {
         method: 'POST',
         body: JSON.stringify({ expected: targetEnvironment })
-      });
+      }, token);
 
       if (!verifyResponse.ok) {
         throw new Error(`Verification failed: ${verifyResponse.statusText}`);

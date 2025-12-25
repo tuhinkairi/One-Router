@@ -169,10 +169,13 @@ class CacheService:
         
         try:
             # Execute Lua script atomically (no race conditions)
+            # redis-py v4+ signature: eval(script, numkeys, key1, key2, ..., arg1, arg2, ...)
             result = await redis.eval(
                 self._RATE_LIMIT_LUA_SCRIPT,
-                keys=[key],
-                args=[limit_per_minute, now]
+                1,  # numkeys
+                key,  # key
+                limit_per_minute,  # arg1
+                now  # arg2
             )
             
             is_allowed = bool(result[0])

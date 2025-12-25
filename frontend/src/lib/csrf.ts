@@ -13,8 +13,9 @@ let tokenFetchPromise: Promise<string> | null = null;
 /**
  * Fetch a fresh CSRF token from the backend
  * Uses caching and promise deduplication to avoid multiple concurrent requests
+ * @param token - Optional Clerk authentication token to include in Authorization header
  */
-export async function fetchCsrfToken(): Promise<string> {
+export async function fetchCsrfToken(token?: string): Promise<string> {
   // If we already have a cached token, return it
   if (cachedToken) {
     return cachedToken;
@@ -28,12 +29,17 @@ export async function fetchCsrfToken(): Promise<string> {
   // Initiate new fetch
   tokenFetchPromise = (async () => {
     try {
-      const response = await fetch('/api/csrf-token', {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch('/api/csrf/token', {
         method: 'GET',
         credentials: 'include', // Include cookies for authentication
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
 
       if (!response.ok) {
@@ -66,23 +72,34 @@ export function invalidateCsrfToken(): void {
 /**
  * Get CSRF token with automatic refresh on 403 Forbidden
  * This wraps a fetch call to handle CSRF token expiration
+ * @param url - The API endpoint to call
+ * @param options - Fetch options including method, body, and headers
+ * @param token - Optional Clerk authentication token to include in Authorization header
  */
 export async function fetchWithCsrf(
   url: string,
-  options: RequestInit & { method?: string }
+  options: RequestInit & { method?: string },
+  token?: string
 ): Promise<Response> {
   const method = options.method || 'GET';
 
   // Only GET requests don't need CSRF tokens
   if (method === 'GET') {
-    return fetch(url, { ...options, credentials: 'include' });
+    const headers = new Headers(options.headers);
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+    return fetch(url, { ...options, credentials: 'include', headers });
   }
 
-  // Get CSRF token for state-changing operations
-  const token = await fetchCsrfToken();
+  // Get CSRF token for state-changing operations (pass token through)
+  const csrfToken = await fetchCsrfToken(token);
 
   const headers = new Headers(options.headers);
-  headers.set('X-CSRF-Token', token);
+  headers.set('X-CSRF-Token', csrfToken);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
   if (!headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
@@ -98,9 +115,12 @@ export async function fetchWithCsrf(
     console.warn('CSRF token validation failed, attempting refresh...');
     invalidateCsrfToken();
     
-    const newToken = await fetchCsrfToken();
+    const newCsrfToken = await fetchCsrfToken(token);
     const newHeaders = new Headers(options.headers);
-    newHeaders.set('X-CSRF-Token', newToken);
+    newHeaders.set('X-CSRF-Token', newCsrfToken);
+    if (token) {
+      newHeaders.set('Authorization', `Bearer ${token}`);
+    }
     if (!newHeaders.has('Content-Type')) {
       newHeaders.set('Content-Type', 'application/json');
     }

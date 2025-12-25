@@ -229,8 +229,8 @@ async def csrf_validation_middleware(request: Request, call_next):
     
     # Skip CSRF validation for these paths
     skip_paths = [
-        "/api/csrf-token",
-        "/api/csrf-validate",
+        "/api/csrf/token",
+        "/api/csrf/validate",
         "/api/health",
         "/docs",
         "/redoc",
@@ -254,7 +254,7 @@ async def csrf_validation_middleware(request: Request, call_next):
             status_code=403,
             content=ErrorResponse(
                 error=ErrorDetail(
-                    code=ErrorCode.INVALID_REQUEST,
+                    code=ErrorCode.INVALID_REQUEST_FORMAT,
                     message="CSRF token missing or invalid",
                     details={"field": "X-CSRF-Token"}
                 ),
@@ -263,14 +263,27 @@ async def csrf_validation_middleware(request: Request, call_next):
             ).dict()
         )
     
-    # Get session ID for validation
+    # Get session ID for validation - try Clerk auth header first, then cookie
     session_id = None
-    if hasattr(request.state, 'user_id') and request.state.user_id:
-        session_id = request.state.user_id
-    elif "session_id" in request.cookies:
-        session_id = request.cookies["session_id"]
     
-    # If no session, generate one for this request
+    # Try to extract from Clerk token
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        try:
+            # Extract user ID from JWT without full verification (quick extraction)
+            import jwt
+            token = auth_header.split(" ", 1)[1]
+            # Decode without verification to extract sub claim
+            payload = jwt.decode(token, options={"verify_signature": False})
+            session_id = payload.get("sub")
+        except Exception:
+            pass
+    
+    # Fallback to session cookie
+    if not session_id:
+        session_id = request.cookies.get("session_id")
+    
+    # Generate random session ID for CSRF-only requests if no auth session exists
     if not session_id:
         import secrets
         session_id = secrets.token_urlsafe(32)
@@ -287,7 +300,7 @@ async def csrf_validation_middleware(request: Request, call_next):
             status_code=403,
             content=ErrorResponse(
                 error=ErrorDetail(
-                    code=ErrorCode.INVALID_REQUEST,
+                    code=ErrorCode.INVALID_REQUEST_FORMAT,
                     message="CSRF token validation failed",
                     details={"reason": "token_mismatch_or_expired"}
                 ),

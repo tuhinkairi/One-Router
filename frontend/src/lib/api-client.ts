@@ -11,15 +11,37 @@ export function useClientApiCall() {
     console.log('useClientApiCall: Token available:', !!token);
 
     const url = `${API_BASE_URL}${endpoint}`;
+    const method = options?.method || 'GET';
+
+    // For state-changing operations, we need CSRF tokens
+    let headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...options?.headers,
+    };
+
+    // Add CSRF token for POST, PATCH, DELETE, PUT requests
+    if (['POST', 'PATCH', 'DELETE', 'PUT'].includes(method.toUpperCase())) {
+      try {
+        // Fetch CSRF token with authentication context
+        const csrfResponse = await fetch(`${API_BASE_URL}/api/csrf/token`, {
+          credentials: 'include',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        });
+        if (csrfResponse.ok) {
+          const csrfData = await csrfResponse.json() as { csrf_token: string };
+          headers['X-CSRF-Token'] = csrfData.csrf_token;
+        }
+      } catch (error) {
+        console.warn('Failed to fetch CSRF token:', error);
+      }
+    }
 
     try {
       const response = await fetch(url, {
         ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
-          ...options?.headers,
-        },
+        headers,
+        credentials: 'include',
       });
 
       if (!response.ok) {
