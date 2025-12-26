@@ -119,23 +119,19 @@ async def razorpay_webhook(
     if not credential:
         raise HTTPException(status_code=400, detail="Invalid webhook request")
     
-    # Verify webhook signature
-    from ..services.credential_manager import CredentialManager
-    cred_manager = CredentialManager()
-    creds = cred_manager.decrypt_credentials(str(credential.encrypted_credential))
-    
+    # Verify webhook signature using the webhook verifier service
+    from ..services.webhook_verifier import WebhookVerifier
+    verifier = WebhookVerifier()
+
+    creds = await verifier.get_user_credentials(user_id, "razorpay", db)
+    if not creds:
+        raise HTTPException(status_code=400, detail="Invalid webhook request")
+
     webhook_secret = creds.get("RAZORPAY_WEBHOOK_SECRET")
     if not webhook_secret:
         raise HTTPException(status_code=400, detail="Invalid webhook request")
-    
-    # Verify signature
-    expected_signature = hmac.new(
-        webhook_secret.encode(),
-        body,
-        hashlib.sha256
-    ).hexdigest()
-    
-    if not hmac.compare_digest(expected_signature, signature):
+
+    if not await verifier.verify_razorpay_signature(body, signature, webhook_secret):
         raise HTTPException(status_code=400, detail="Invalid webhook request")
     
     # Log webhook event
@@ -231,45 +227,28 @@ async def paypal_webhook(
     if not credential:
         raise HTTPException(status_code=404, detail="User credentials not found")
     
-    # Verify webhook using PayPal API
-    from ..services.credential_manager import CredentialManager
-    cred_manager = CredentialManager()
-    creds = cred_manager.decrypt_credentials(str(credential.encrypted_credential))
-    
+    # Verify webhook using webhook verifier service
+    from ..services.webhook_verifier import WebhookVerifier
+    from ..adapters.paypal import PayPalAdapter
+    verifier = WebhookVerifier()
+
+    creds = await verifier.get_user_credentials(user_id, "paypal", db)
+    if not creds:
+        raise HTTPException(status_code=404, detail="User credentials not found")
+
     # Get webhook_id from credential config
     webhook_id = credential.features_config.get("paypal_webhook_id")
-    
     if not webhook_id:
         raise HTTPException(status_code=400, detail="PayPal webhook ID not configured")
-    
-    # Call PayPal verify endpoint
-    from ..adapters.paypal import PayPalAdapter
+
+    # Create PayPal adapter for verification
     adapter = PayPalAdapter(creds)
-    
-    # Verify webhook signature
-    verify_flag = os.getenv("PAYPAL_WEBHOOK_VERIFY", "true").lower() == "true"
-    environment = os.getenv("ENVIRONMENT", "development")
-    # Only skip verification in non-production environments
-    skip_verification = environment != "production"
-    if not verify_flag:
-        logger.warning("PAYPAL_WEBHOOK_VERIFY is disabled - this should not be used in production")
-    
-    if not skip_verification:
-        raw_body_str = body.decode('utf-8')
-        is_verified = await adapter.verify_webhook_signature(
-            transmission_id=transmission_id or "",
-            transmission_time=transmission_time or "",
-            transmission_sig=transmission_sig or "",
-            auth_algo=auth_algo or "",
-            cert_url=cert_url or "",
-            webhook_id=webhook_id,
-            webhook_event=raw_body_str
-        )
-        if not is_verified:
-            logger.warning(f"PayPal webhook signature verification failed for user {user_id}")
-            raise HTTPException(status_code=401, detail="Webhook signature verification failed")
-    else:
-        logger.info(f"PayPal webhook verification skipped (verify_flag={verify_flag}, environment={environment})")    
+
+    # Verify webhook signature with replay protection
+    raw_body_str = body.decode('utf-8')
+    if not await verifier.verify_paypal_signature(headers, raw_body_str, webhook_id, adapter):
+        logger.warning(f"PayPal webhook signature verification failed for user {user_id}")
+        raise HTTPException(status_code=401, detail="Webhook signature verification failed")
     # Log webhook event
     webhook_event = WebhookEvent(
         user_id=user_id,
@@ -302,6 +281,119 @@ async def paypal_webhook(
     )
     await db.commit()
     
+    return {"status": "received", "event_id": str(webhook_event.id)}
+
+
+@router.post("/webhooks/twilio")
+async def twilio_webhook(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Receive Twilio webhook → verify signature → forward to developer
+
+    Twilio webhooks use HMAC-SHA1 signature verification
+    """
+
+    # Get request data
+    body = await request.body()
+    headers = dict(request.headers)
+    params = dict(request.query_params)
+
+    # Twilio signature header
+    signature = headers.get("x-twilio-signature")
+    if not signature:
+        raise HTTPException(status_code=400, detail="Missing X-Twilio-Signature header")
+
+    # Parse webhook event
+    try:
+        body_str = body.decode('utf-8')
+        event = json.loads(body_str) if body_str else {}
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid request payload")
+
+    # Extract user identifier from webhook payload
+    # For Twilio, we need to identify the user somehow - this could be in the payload
+    # or we might need to use account SID to map to users
+    account_sid = event.get("AccountSid")
+    if not account_sid:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot identify Twilio account. AccountSid missing from payload."
+        )
+
+    # Find user by Twilio account SID in their credentials
+    result = await db.execute(
+        select(ServiceCredential).where(
+            ServiceCredential.provider_name == "twilio",
+            ServiceCredential.is_active == True
+        )
+    )
+    credentials = result.scalars().all()
+
+    user_id = None
+    creds = None
+    for credential in credentials:
+        from ..services.webhook_verifier import WebhookVerifier
+        verifier = WebhookVerifier()
+        decrypted_creds = await verifier.get_user_credentials(credential.user_id, "twilio", db)
+        if decrypted_creds and decrypted_creds.get("TWILIO_ACCOUNT_SID") == account_sid:
+            user_id = credential.user_id
+            creds = decrypted_creds
+            break
+
+    if not user_id or not creds:
+        raise HTTPException(status_code=400, detail="Invalid webhook request - account not found")
+
+    # Verify webhook signature
+    auth_token = creds.get("TWILIO_AUTH_TOKEN")
+    if not auth_token:
+        raise HTTPException(status_code=400, detail="Invalid webhook request - auth token missing")
+
+    if not await verifier.verify_twilio_signature(str(request.url), params, body_str, signature, auth_token):
+        raise HTTPException(status_code=400, detail="Invalid webhook request")
+
+    # Log webhook event
+    webhook_event = WebhookEvent(
+        user_id=user_id,
+        service_name="twilio",
+        event_type=event.get("EventType", "unknown"),
+        payload=event,
+        signature=signature,
+        processed=False
+    )
+    db.add(webhook_event)
+    await db.commit()
+
+    # Get user's webhook URL from their settings
+    credential_result = await db.execute(
+        select(ServiceCredential).where(
+            ServiceCredential.user_id == user_id,
+            ServiceCredential.provider_name == "twilio",
+            ServiceCredential.is_active == True
+        )
+    )
+    credential = credential_result.scalar_one_or_none()
+    user_webhook_url = credential.features_config.get("webhook_url") if credential else None
+
+    if user_webhook_url:
+        background_tasks.add_task(
+            forward_webhook_to_developer,
+            user_webhook_url,
+            event,
+            signature,
+            "twilio"
+        )
+
+    # Mark as processed
+    await db.execute(
+        update(WebhookEvent)
+        .where(WebhookEvent.id == webhook_event.id)
+        .values(processed=True, processed_at=func.now())
+    )
+    await db.commit()
+
     return {"status": "received", "event_id": str(webhook_event.id)}
 
 

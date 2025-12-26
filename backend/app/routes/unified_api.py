@@ -45,9 +45,17 @@ class PaymentOrderRequest(BaseModel):
         description="ISO 4217 currency code (3 uppercase letters)"
     )] = "INR"
     provider: Optional[str] = None  # Auto-select if not specified
+    method: Optional[str] = None  # Payment method: 'upi', 'card', 'netbanking', 'wallet'
     receipt: Optional[str] = None
     notes: Optional[Dict[str, Any]] = None
     idempotency_key: Optional[str] = None  # For idempotent request handling
+
+    # Payment method specific options
+    upi_app: Optional[str] = None  # UPI app preference
+    emi_plan: Optional[str] = None  # EMI plan
+    card_network: Optional[str] = None  # Preferred card network
+    wallet_provider: Optional[str] = None  # Wallet provider
+    bank_code: Optional[str] = None  # Net banking bank code
     
     @validator('amount', pre=True)
     @classmethod
@@ -137,7 +145,15 @@ async def create_payment_order(
     from ..services.idempotency_service import IdempotencyService
     idempotency_service = IdempotencyService()
 
-    provider = request.provider or "razorpay"
+    # Determine provider with smart selection based on payment method
+    provider = request.provider
+    if not provider and request.method:
+        # Import payment method validator for smart selection
+        from ..services.payment_method_validator import ProviderCapabilities
+        provider = ProviderCapabilities.get_preferred_provider(request.method, request.currency)
+
+    # Default fallback
+    provider = provider or "razorpay"
     start_time = time.time()
 
     # Generate or use provided idempotency key
@@ -201,13 +217,64 @@ async def create_payment_order(
                 "receipt": request.receipt,
             }
 
+            # Validate payment method compatibility with provider
+            if hasattr(request, 'method') and request.method:
+                from ..services.payment_method_validator import ProviderCapabilities
+                validation_result = ProviderCapabilities.validate_method_combination(
+                    provider=provider,
+                    method=request.method,
+                    upi_app=getattr(request, 'upi_app', None),
+                    card_network=getattr(request, 'card_network', None),
+                    wallet_provider=getattr(request, 'wallet_provider', None)
+                )
+
+                if not validation_result["valid"]:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Payment method validation failed: {', '.join(validation_result['errors'])}"
+                    )
+
+            # Add payment method parameters if provided
+            if hasattr(request, 'method') and request.method:
+                order_kwargs["method"] = request.method
+            if hasattr(request, 'upi_app') and request.upi_app:
+                order_kwargs["upi_app"] = request.upi_app
+            if hasattr(request, 'emi_plan') and request.emi_plan:
+                order_kwargs["emi_plan"] = request.emi_plan
+            if hasattr(request, 'card_network') and request.card_network:
+                order_kwargs["card_network"] = request.card_network
+            if hasattr(request, 'wallet_provider') and request.wallet_provider:
+                order_kwargs["wallet_provider"] = request.wallet_provider
+            if hasattr(request, 'bank_code') and request.bank_code:
+                order_kwargs["bank_code"] = request.bank_code
+
             if provider == "razorpay":
                 order_kwargs["notes"] = notes
             elif provider == "paypal":
                 order_kwargs["custom_id"] = str(user["id"])
 
             result = await adapter.create_order(**order_kwargs)
-            
+
+            # Enhance response with payment method information (Phase 2)
+            if hasattr(request, 'method') and request.method:
+                result["payment_method"] = request.method
+
+                # Add method-specific details
+                method_details = {}
+                if hasattr(request, 'upi_app') and request.upi_app:
+                    method_details["upi_app"] = request.upi_app
+                if hasattr(request, 'emi_plan') and request.emi_plan:
+                    method_details["emi_plan"] = request.emi_plan
+                if hasattr(request, 'card_network') and request.card_network:
+                    method_details["card_network"] = request.card_network
+                if hasattr(request, 'wallet_provider') and request.wallet_provider:
+                    method_details["wallet_provider"] = request.wallet_provider
+                if hasattr(request, 'bank_code') and request.bank_code:
+                    method_details["bank_code"] = request.bank_code
+
+                if method_details:
+                    result["method_details"] = method_details
+
             # Calculate response time
             response_time_ms = int((time.time() - start_time) * 1000)
             
@@ -405,6 +472,8 @@ class CreateSubscriptionRequest(BaseModel):
     customer_notify: bool = True
     total_count: Optional[int] = 12
     quantity: Optional[int] = 1
+    trial_days: Optional[int] = None  # Number of trial days
+    start_date: Optional[str] = None  # ISO format start date
     idempotency_key: Optional[str] = None  # For idempotent request handling
 
 @router.post("/subscriptions")
@@ -480,10 +549,12 @@ async def create_subscription(
 
             # Pass-through to gateway
             result = await adapter.create_subscription(
-                plan_id, 
-                customer_notify, 
+                plan_id,
+                customer_notify,
                 total_count=request.total_count,
-                quantity=request.quantity
+                quantity=request.quantity,
+                trial_days=request.trial_days,
+                start_date=request.start_date
             )
             
             # Calculate response time
@@ -587,6 +658,60 @@ async def pause_subscription(
             result = await adapter.pause_subscription(subscription_id, pause_at)
         else:
             raise HTTPException(status_code=400, detail="Pause not supported for this provider")
+
+        return result
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/subscriptions/{subscription_id}/resume")
+async def resume_subscription(
+    subscription_id: str,
+    provider: Optional[str] = None,
+    user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Resume paused subscription (Razorpay only)"""
+    try:
+        if not provider:
+            provider = _detect_provider_from_id(subscription_id)
+
+        if provider != "razorpay":
+            raise HTTPException(status_code=400, detail="Resume is only supported for Razorpay")
+
+        adapter = await request_router.get_adapter(user["id"], provider, db)
+        if hasattr(adapter, 'resume_subscription'):
+            result = await adapter.resume_subscription(subscription_id)
+        else:
+            raise HTTPException(status_code=400, detail="Resume not supported for this provider")
+
+        return result
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/subscriptions/{subscription_id}/change_plan")
+async def change_subscription_plan(
+    subscription_id: str,
+    new_plan_id: str,
+    prorate: bool = True,
+    provider: Optional[str] = None,
+    user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Change subscription plan (Razorpay only)"""
+    try:
+        if not provider:
+            provider = _detect_provider_from_id(subscription_id)
+
+        if provider != "razorpay":
+            raise HTTPException(status_code=400, detail="Plan changes are only supported for Razorpay")
+
+        adapter = await request_router.get_adapter(user["id"], provider, db)
+        if hasattr(adapter, 'change_plan'):
+            result = await adapter.change_plan(subscription_id, new_plan_id, prorate)
+        else:
+            raise HTTPException(status_code=400, detail="Plan changes not supported for this provider")
 
         return result
 

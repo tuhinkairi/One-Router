@@ -83,6 +83,20 @@ class RazorpayAdapter(BaseAdapter):
                 notes=kwargs.get("notes")
             )
 
+            # Add payment method parameters if provided
+            if kwargs.get("method"):
+                unified_request.method = kwargs["method"]
+            if kwargs.get("upi_app"):
+                unified_request.upi_app = kwargs["upi_app"]
+            if kwargs.get("emi_plan"):
+                unified_request.emi_plan = kwargs["emi_plan"]
+            if kwargs.get("card_network"):
+                unified_request.card_network = kwargs["card_network"]
+            if kwargs.get("wallet_provider"):
+                unified_request.wallet_provider = kwargs["wallet_provider"]
+            if kwargs.get("bank_code"):
+                unified_request.bank_code = kwargs["bank_code"]
+
             # Transform to Razorpay format
             payload = self.transformer.transform_create_order_request(unified_request)
 
@@ -301,7 +315,9 @@ class RazorpayAdapter(BaseAdapter):
                 plan_id=plan_id,
                 customer_notify=customer_notify,
                 total_count=kwargs.get("total_count", 12),
-                quantity=kwargs.get("quantity", 1)
+                quantity=kwargs.get("quantity", 1),
+                trial_days=kwargs.get("trial_days"),
+                start_date=kwargs.get("start_date")
             )
 
             # Transform to Razorpay format
@@ -339,3 +355,11 @@ class RazorpayAdapter(BaseAdapter):
         """Resume subscription"""
         payload = {"resume_at": resume_at}
         return await self.call_api(f"/v1/subscriptions/{subscription_id}/resume", method="POST", payload=payload)
+
+    async def change_plan(self, subscription_id: str, new_plan_id: str, prorate: bool = True):
+        """Change subscription plan"""
+        payload = {
+            "plan_id": new_plan_id,
+            "prorate": prorate
+        }
+        return await self.call_api(f"/v1/subscriptions/{subscription_id}", method="PATCH", payload=payload)

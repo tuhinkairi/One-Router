@@ -24,6 +24,14 @@ class UnifiedPaymentRequest(BaseModel):
     notes: Optional[Dict[str, Any]] = None
     idempotency_key: Optional[str] = None
 
+    # Payment method parameters
+    method: Optional[str] = None
+    upi_app: Optional[str] = None
+    emi_plan: Optional[str] = None
+    card_network: Optional[str] = None
+    wallet_provider: Optional[str] = None
+    bank_code: Optional[str] = None
+
 
 class UnifiedRefundRequest(BaseModel):
     """Unified refund request"""
@@ -38,6 +46,8 @@ class UnifiedSubscriptionRequest(BaseModel):
     customer_notify: bool = True
     total_count: int = Field(..., gt=0)
     quantity: int = Field(1, gt=0)
+    trial_days: Optional[int] = None
+    start_date: Optional[str] = None
     idempotency_key: Optional[str] = None
 
 
@@ -51,6 +61,10 @@ class UnifiedPaymentResponse(BaseModel):
     status: str  # normalized status
     receipt: Optional[str] = None
     created_at: Optional[int] = None
+
+    # Payment method information (Phase 2 enhancement)
+    payment_method: Optional[str] = None  # 'upi', 'card', 'netbanking', etc.
+    method_details: Optional[Dict[str, Any]] = None  # Provider-specific method details
 
     class Config:
         json_encoders = {Decimal: lambda v: str(v)}
