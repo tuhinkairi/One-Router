@@ -127,12 +127,12 @@ async def test_phase2_enhanced_subscriptions():
         print("   [PASS] Unified request transformer works")
 
         print("\n[SUCCESS] Phase 2.2 enhanced subscription flows are working!")
-        print("✅ Trial periods support")
-        print("✅ Custom start dates")
-        print("✅ Pause/resume operations")
-        print("✅ Plan change functionality")
-        print("✅ Enhanced SDK methods")
-        print("✅ Backend API integration")
+        print("[OK] Trial periods support")
+        print("[OK] Custom start dates")
+        print("[OK] Pause/resume operations")
+        print("[OK] Plan change functionality")
+        print("[OK] Enhanced SDK methods")
+        print("[OK] Backend API integration")
 
         return True
 

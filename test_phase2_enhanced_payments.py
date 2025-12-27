@@ -191,11 +191,11 @@ async def test_phase2_enhanced_payments():
         print("   [PASS] SDK client integration works")
 
         print("\n[SUCCESS] Phase 2.3 enhanced payment features are working!")
-        print("✅ Enhanced refunds with reasons and speed")
-        print("✅ EMI support in payment creation")
-        print("✅ Card saving for future payments")
-        print("✅ Saved payment methods management")
-        print("✅ Enhanced SDK resources")
+        print("[OK] Enhanced refunds with reasons and speed")
+        print("[OK] EMI support in payment creation")
+        print("[OK] Card saving for future payments")
+        print("[OK] Saved payment methods management")
+        print("[OK] Enhanced SDK resources")
 
         return True
 

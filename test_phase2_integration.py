@@ -161,10 +161,10 @@ async def test_phase2_integration():
         print("   [PASS] SDK integration works with enhanced responses")
 
         print("\n[SUCCESS] Phase 2.1 implementation is working correctly!")
-        print("✅ Payment method validation")
-        print("✅ Smart provider selection")
-        print("✅ Enhanced API responses")
-        print("✅ SDK integration")
+        print("[OK] Payment method validation")
+        print("[OK] Smart provider selection")
+        print("[OK] Enhanced API responses")
+        print("[OK] SDK integration")
 
         return True
 

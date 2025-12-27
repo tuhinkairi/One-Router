@@ -162,11 +162,11 @@ async def test_phase3_marketplace():
         print("   [PASS] SDK client integration works")
 
         print("\n[SUCCESS] Phase 3 marketplace features are working!")
-        print("✅ Split payments with automatic allocation")
-        print("✅ Vendor account management")
-        print("✅ Platform fee tracking")
-        print("✅ Backend API models")
-        print("✅ SDK client integration")
+        print("[OK] Split payments with automatic allocation")
+        print("[OK] Vendor account management")
+        print("[OK] Platform fee tracking")
+        print("[OK] Backend API models")
+        print("[OK] SDK client integration")
 
         return True
 

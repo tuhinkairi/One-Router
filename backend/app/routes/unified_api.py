@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel, Field, validator
-from typing import Optional, Dict, Any, Annotated
+from typing import Optional, Dict, Any, Annotated, List
 from ..database import get_db
 from ..services.request_router import RequestRouter
 from ..auth.dependencies import get_current_user
@@ -420,51 +420,157 @@ async def capture_payment(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/payments/refund")
-async def create_refund(
-    payment_id: str,
-    amount: Optional[float] = None,
+class RefundRequest(BaseModel):
+    payment_id: str
+    amount: Optional[float] = None  # None for full refund
+    reason: Optional[str] = None  # Refund reason
+    speed: str = "normal"  # 'normal', 'optimum' (Razorpay)
+    notes: Optional[Dict[str, Any]] = None  # Additional metadata
+
+
+# =============================================================================
+# MARKETPLACE ENDPOINTS
+# =============================================================================
+
+class SplitPaymentRequest(BaseModel):
+    amount: float
+    splits: List[Dict[str, Any]]
+    currency: str = "INR"
+    description: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class VendorAccountRequest(BaseModel):
+    vendor_id: str
+    name: str
+    account_details: Dict[str, Any]
+    split_config: Optional[Dict[str, Any]] = None
+
+
+@router.post("/marketplace/payments/split")
+async def create_split_payment(
+    request: SplitPaymentRequest,
     user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Create a refund (unified API)"""
+    """Create a payment with automatic splits to multiple parties"""
     try:
+        import time
         from ..models import TransactionLog
 
-        # Resolve provider from stored transaction log
-        result = await db.execute(
-            select(TransactionLog).where(TransactionLog.transaction_id == payment_id)
-        )
-        log_entry = result.scalar_one_or_none()
+        start_time = time.time()
+        transaction_id = f"txn_{user['id']}_{int(start_time)}_{uuid.uuid4().hex[:8]}"
 
-        if log_entry:
-            provider = log_entry.service_name
-        else:
-            # Fallback: try to parse from payment_id format "unf_{provider}_{providerOrderId}"
-            if payment_id.startswith("unf_"):
-                parts = payment_id.split("_")
-                if len(parts) >= 3:
-                    provider = parts[1]
-                else:
-                    provider = None
-            else:
-                provider = None
-
-        # Use resolved provider or fall back to razorpay
-        if not provider:
-            provider = "razorpay"
-
+        # For now, default to Razorpay for marketplace features
+        provider = "razorpay"
         adapter = await request_router.get_adapter(user["id"], provider, db)
-        result = await adapter.create_refund(payment_id, amount or 0.0)
+
+        # Create the split payment
+        result = await adapter.create_split_payment(
+            amount=request.amount,
+            currency=request.currency,
+            splits=request.splits,
+            description=request.description,
+            metadata=request.metadata
+        )
+
+        # Calculate response time
+        response_time_ms = int((time.time() - start_time) * 1000)
+
+        # Log the transaction
+        log_entry = TransactionLog(
+            user_id=user["id"],
+            transaction_id=transaction_id,
+            service_name=provider,
+            endpoint="/marketplace/payments/split",
+            http_method="POST",
+            request_payload=request.dict(),
+            response_payload=result,
+            response_status=200,
+            response_time_ms=response_time_ms,
+            status="completed"
+        )
+        db.add(log_entry)
+        await db.commit()
+
         return result
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ========================================
-# SUBSCRIPTION ROUTES (Pass-Through)
-# ========================================
 
-from pydantic import BaseModel
+@router.post("/marketplace/vendors")
+async def add_vendor_account(
+    request: VendorAccountRequest,
+    user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Add a vendor account for marketplace payouts"""
+    try:
+        # For now, store vendor info in user metadata or features_config
+        # In a full implementation, this would create a vendor record
+
+        # Get user's service credential to store vendor info
+        result = await db.execute(
+            select(ServiceCredential).where(
+                ServiceCredential.user_id == user["id"],
+                ServiceCredential.provider_name == "razorpay",  # Assume marketplace uses primary provider
+                ServiceCredential.is_active == True
+            )
+        )
+        credential = result.scalar_one_or_none()
+
+        if not credential:
+            raise HTTPException(status_code=404, detail="No active payment service found")
+
+        # Store vendor info in features_config (simplified approach)
+        current_vendors = credential.features_config.get("marketplace_vendors", [])
+        current_vendors.append({
+            "vendor_id": request.vendor_id,
+            "name": request.name,
+            "account_details": request.account_details,
+            "split_config": request.split_config,
+            "created_at": time.time()
+        })
+
+        credential.features_config["marketplace_vendors"] = current_vendors
+        await db.commit()
+
+        return {
+            "vendor_id": request.vendor_id,
+            "status": "added",
+            "message": f"Vendor {request.name} added successfully"
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/marketplace/vendors")
+async def list_vendor_accounts(
+    user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """List all connected vendor accounts"""
+    try:
+        result = await db.execute(
+            select(ServiceCredential).where(
+                ServiceCredential.user_id == user["id"],
+                ServiceCredential.provider_name == "razorpay",
+                ServiceCredential.is_active == True
+            )
+        )
+        credential = result.scalar_one_or_none()
+
+        if not credential:
+            return {"vendors": []}
+
+        vendors = credential.features_config.get("marketplace_vendors", [])
+        return {"vendors": vendors}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 class CreateSubscriptionRequest(BaseModel):
     plan_id: str
@@ -475,6 +581,7 @@ class CreateSubscriptionRequest(BaseModel):
     trial_days: Optional[int] = None  # Number of trial days
     start_date: Optional[str] = None  # ISO format start date
     idempotency_key: Optional[str] = None  # For idempotent request handling
+
 
 @router.post("/subscriptions")
 async def create_subscription(
