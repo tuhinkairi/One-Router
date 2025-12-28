@@ -329,7 +329,7 @@ async def verify_environment_switch(
             "switched_count": 5,
             "failed_count": 0,
             "services": [
-                {"name": "stripe", "environment": "live", "switched": true},
+                {"name": "razorpay", "environment": "live", "switched": true},
                 ...
             ]
         }

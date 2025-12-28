@@ -913,7 +913,6 @@ async def get_billing_analytics(
         pricing = {
             "razorpay": 0.001,  # $0.001 per request
             "paypal": 0.0015,   # $0.0015 per request
-            "stripe": 0.0012,   # $0.0012 per request
             "default": 0.001    # $0.001 per request for others
         }
 

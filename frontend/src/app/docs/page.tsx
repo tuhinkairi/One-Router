@@ -293,10 +293,7 @@ function OverviewSection() {
                   <p className="text-sm font-medium text-blue-400">PayPal</p>
                   <p className="text-xs text-[#666]">Global payments and subscriptions</p>
                 </div>
-                <div className="p-3 bg-[#0a0a0a] rounded border border-[#222]">
-                  <p className="text-sm font-medium text-purple-400">Stripe</p>
-                  <p className="text-xs text-[#666]">Advanced payment processing</p>
-                </div>
+
               </div>
             </div>
           </div>

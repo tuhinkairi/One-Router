@@ -448,10 +448,6 @@ class CredentialManager:
             if not credentials.get("PAYPAL_CLIENT_SECRET"):
                 errors["PAYPAL_CLIENT_SECRET"] = "Required"
 
-        elif service_name == "stripe":
-            if not credentials.get("STRIPE_SECRET_KEY"):
-                errors["STRIPE_SECRET_KEY"] = "Required"
-
         elif service_name == "twilio":
             if not credentials.get("TWILIO_ACCOUNT_SID"):
                 errors["TWILIO_ACCOUNT_SID"] = "Required"

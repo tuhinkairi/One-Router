@@ -212,7 +212,7 @@ export default function PricingPage() {
           <FeatureItem
             icon={Zap}
             title="Unified API"
-            description="Single API for Razorpay, PayPal, and Stripe. Integrate once, support all major payment gateways seamlessly."
+            description="Single API for Razorpay and PayPal. Integrate once, support all major payment gateways seamlessly."
           />
           <FeatureItem
             icon={Shield}
@@ -286,7 +286,7 @@ export default function PricingPage() {
             <div>
               <h3 className="text-lg font-semibold text-white mb-2">What payment gateways do you support?</h3>
               <p className="text-[#888]">
-                We support Razorpay, PayPal, and Stripe out of the box. You can add them after creating your account.
+                We support Razorpay and PayPal out of the box. You can add them after creating your account.
               </p>
             </div>
 

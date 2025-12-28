@@ -53,7 +53,7 @@ def test_env_parser():
     print(f"  Detected {len(detections)} services")
 
     # Verify detections
-    expected_services = {'razorpay', 'paypal', 'stripe', 'twilio', 'aws_s3'}
+    expected_services = {'razorpay', 'paypal', 'twilio', 'aws_s3'}
     detected_services = {d.service_name for d in detections}
 
     assert expected_services.issubset(detected_services), f"Missing services: {expected_services - detected_services}"

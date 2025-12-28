@@ -404,7 +404,6 @@ async def configure_services(
                 service_prefixes = {
                     'razorpay': ['RAZORPAY_'],
                     'paypal': ['PAYPAL_'],
-                    'stripe': ['STRIPE_'],
                     'twilio': ['TWILIO_'],
                     'aws_s3': ['AWS_']
                 }

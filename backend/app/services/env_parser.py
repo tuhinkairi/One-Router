@@ -76,30 +76,6 @@ class EnvParserService:
                     }
                 }
             },
-            'stripe': {
-                'credential_patterns': [
-                    r'^STRIPE_PUBLISHABLE_KEY$',
-                    r'^STRIPE_SECRET_KEY$',
-                    r'^STRIPE_WEBHOOK_SECRET$'
-                ],
-                'feature_patterns': {
-                    'payments': {
-                        'required': [r'^STRIPE_SECRET_KEY$'],
-                        'indicator': ['SECRET_KEY']
-                    },
-                    'subscriptions': {
-                        'optional': [
-                            r'^STRIPE_SUBSCRIPTION_PLAN_.*$',
-                            r'^STRIPE_PLAN_.*$'
-                        ],
-                        'indicator': ['SUBSCRIPTION', 'PLAN']
-                    },
-                    'webhooks': {
-                        'required': [r'^STRIPE_WEBHOOK_SECRET$'],
-                        'indicator': ['WEBHOOK_SECRET']
-                    }
-                }
-            },
             'twilio': {
                 'credential_patterns': [
                     r'^TWILIO_ACCOUNT_SID$',
@@ -248,7 +224,6 @@ class EnvParserService:
         service_prefixes = {
             'razorpay': ['RAZORPAY_', 'SUBSCRIPTION_PLAN_', 'PAYMENT_LINK_'],
             'paypal': ['PAYPAL_', 'SUBSCRIPTION_PLAN_', 'PAYMENT_LINK_'],
-            'stripe': ['STRIPE_', 'SUBSCRIPTION_PLAN_', 'PAYMENT_LINK_'],
             'twilio': ['TWILIO_'],
             'aws_s3': ['AWS_']
         }

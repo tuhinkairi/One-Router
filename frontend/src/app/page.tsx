@@ -217,7 +217,7 @@ export default function Home() {
                     </div>
                     <div className="text-[#888] mb-4">
                       <span className="text-[#666]">5</span>
-                      <span className="ml-4">  services: [<span className="text-[#ff9d76]">&quot;stripe&quot;</span>, <span className="text-[#ff9d76]">&quot;paypal&quot;</span>, ...]</span>
+                      <span className="ml-4">  services: [<span className="text-[#ff9d76]">&quot;razorpay&quot;</span>, <span className="text-[#ff9d76]">&quot;paypal&quot;</span>, ...]</span>
                     </div>
                     <div className="text-[#888] mb-4">
                       <span className="text-[#666]">6</span>
@@ -276,11 +276,9 @@ export default function Home() {
                     <span className="text-xs text-[#666] font-mono">without.ts</span>
                   </div>
                   <div className="p-3 sm:p-4 font-mono text-xs sm:text-sm space-y-2 text-[#888] overflow-x-auto">
-                    <div><span className="text-[#ff9d76]">import</span> Stripe <span className="text-[#ff9d76]">from</span> <span className="text-[#90c695]">&quot;stripe&quot;</span></div>
                     <div><span className="text-[#ff9d76]">import</span> PayPal <span className="text-[#ff9d76]">from</span> <span className="text-[#90c695]">&quot;paypal-sdk&quot;</span></div>
                     <div><span className="text-[#ff9d76]">import</span> Razorpay <span className="text-[#ff9d76]">from</span> <span className="text-[#90c695]">&quot;razorpay&quot;</span></div>
-                    <div className="mt-3 pt-3 border-t border-[#222]"><span className="text-[#ff9d76]">const</span> stripe = <span className="text-[#6bcf7f]">new Stripe</span>(key)</div>
-                    <div><span className="text-[#ff9d76]">const</span> paypal = <span className="text-[#6bcf7f]">new PayPal</span>(key)</div>
+                    <div className="mt-3 pt-3 border-t border-[#222]"><span className="text-[#ff9d76]">const</span> paypal = <span className="text-[#6bcf7f]">new PayPal</span>(key)</div>
                     <div><span className="text-[#ff9d76]">const</span> razorpay = <span className="text-[#6bcf7f]">new Razorpay</span>(key)</div>
                     <div className="mt-3 pt-3 border-t border-[#222]"><span className="text-[#888]"> Now handle 3 different APIs...</span></div>
                   </div>
