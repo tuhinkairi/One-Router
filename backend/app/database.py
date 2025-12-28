@@ -1,10 +1,18 @@
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from .config import settings
 
-# Create engine with psycopg2
-engine = create_engine(
-    settings.DATABASE_URL,
+# Create async engine
+# Convert connection string for asyncpg
+database_url = settings.DATABASE_URL
+if database_url.startswith("postgresql://"):
+    database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+# Clean up parameters that asyncpg doesn't understand
+database_url = database_url.replace("&sslmode=require", "").replace("?sslmode=require", "")
+database_url = database_url.replace("&channel_binding=require", "")
+
+engine = create_async_engine(
+    database_url,
     echo=settings.DEBUG,
     # Connection pooling configuration for production workloads
     pool_size=20,                   # Number of connections to keep pooled
@@ -13,26 +21,31 @@ engine = create_engine(
     pool_recycle=3600,              # Recycle connections every hour (prevents idle connection drops)
     pool_pre_ping=True,             # Test connections before using them (health check)
     connect_args={
-        "application_name": "onerouter_backend",
+        "server_settings": {
+            "application_name": "onerouter_backend",
+            "jit": "off"             # Disable JIT compilation for predictable performance
+        }
     }
 )
 
-# Create session factory
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Create async session factory
+async_session = async_sessionmaker(engine, expire_on_commit=False)
 
-def get_db():
+async def get_db():
     """Database session dependency"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    async with async_session() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
 
-def check_connection_health():
+# Add connection diagnostics
+async def check_connection_health():
     """Check database connection health"""
     try:
-        with engine.connect() as conn:
-            result = conn.execute(text("SELECT version()"))
+        from sqlalchemy import text
+        async with engine.begin() as conn:
+            result = await conn.execute(text("SELECT version()"), {})
             version = result.scalar()
             print(f"Database connected: {version[:50]}...")
             return True
