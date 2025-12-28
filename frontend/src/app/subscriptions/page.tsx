@@ -17,6 +17,7 @@ import { useClientApiCall} from '@/lib/api-client';
 export default function SubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [services, setServices] = useState<any[]>([]);
   const subscriptionAPI = useSubscriptionAPI();
   const apiClient = useClientApiCall();
@@ -138,32 +139,34 @@ export default function SubscriptionsPage() {
             </div>
           ) : filteredSubscriptions.length === 0 ? (
             <Card className="bg-[#1a1a1a] border-[#222]">
-                <CardContent className="flex flex-col items-center justify-center py-16">
-                 <Calendar className="w-16 h-16 text-[#444] mb-4" />
-                 <h3 className="text-xl font-semibold mb-2">No Subscriptions Found</h3>
-                 <p className="text-[#888] text-center mb-4 max-w-md">
-                   You haven't created any subscriptions yet. Subscriptions are created through payment providers and not stored locally.
-                 </p>
-                 <ul className="text-sm text-[#888] space-y-2 text-left">
-                   <li className="flex items-start gap-2">
-                     <span className="text-cyan-500">•</span>
-                     <span>Use the SDK to create subscriptions programmatically</span>
-                   </li>
-                   <li className="flex items-start gap-2">
-                     <span className="text-cyan-500">•</span>
-                     <span>Track subscription IDs from creation responses for management</span>
-                   </li>
-                   <li className="flex items-start gap-2">
-                     <span className="text-cyan-500">•</span>
-                     <span>Use individual subscription endpoints with known IDs</span>
-                   </li>
-                 </ul>
-                 <div className="mt-6 pt-6 border-t border-[#222]">
-                   <p className="text-xs text-[#666] text-center">
-                     Note: Subscription data is managed by payment providers. Track your subscription IDs to manage them.
-                   </p>
-                 </div>
-               </CardContent>
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <Calendar className="w-16 h-16 text-[#444] mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Subscription Management Coming Soon</h3>
+                <p className="text-[#888] text-center mb-4 max-w-md">
+                  The backend endpoint for listing subscriptions is currently being implemented.
+                  In the meantime, you can:
+                </p>
+                <ul className="text-sm text-[#888] space-y-2 text-left">
+                  <li className="flex items-start gap-2">
+                    <span className="text-cyan-500">•</span>
+                    <span>Use the SDK to create subscriptions programmatically</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-cyan-500">•</span>
+                    <span>View individual subscription details via SDK if you have subscription IDs</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-cyan-500">•</span>
+                    <span>Manage marketplace vendors through the new Marketplace page</span>
+                  </li>
+                </ul>
+                <div className="mt-6 pt-6 border-t border-[#222]">
+                  <p className="text-xs text-[#666] text-center">
+                    Note: Backend developers are working on adding the subscription listing endpoint.
+                    Once completed, this page will automatically display all your subscriptions.
+                  </p>
+                </div>
+              </CardContent>
             </Card>
           ) : (
             <div className="space-y-4">
