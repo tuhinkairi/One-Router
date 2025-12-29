@@ -103,7 +103,7 @@ export default function APIKeysPage() {
   useEffect(() => {
     loadAPIKeys();
     loadServices();
-  }, [currentEnvironment, loadAPIKeys, loadServices]);
+  }, [currentEnvironment]);
 
   const generateAPIKey = async () => {
     setGenerating(true);
