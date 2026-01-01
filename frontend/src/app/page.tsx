@@ -246,8 +246,8 @@ export default function Home() {
         {/* Service Integrations - Marquee */}
         <section className="px-4 sm:px-6 py-12 sm:py-20 bg-[#000]">
           <div className="max-w-7xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-center mb-4 font-mono">
-              Service <span className="text-[#00ff88]">Matrix</span>
+            <h2 className="text-2xl font-sans sm:text-3xl md:text-5xl font-bold text-center mb-4 font-mono">
+              Service <span className="text-sky-300">Matrix</span>
             </h2>
             <p className="text-xs sm:text-sm md:text-base text-[#888] text-center mb-8 sm:mb-12 font-mono">
               Connect to 127+ services with a single integration
