@@ -84,6 +84,15 @@ class CredentialManager:
         try:
             combined = encrypted_data
 
+            # Convert to bytes if needed (PostgreSQL BYTEA may return str/memoryview)
+            if not isinstance(combined, bytes):
+                if isinstance(combined, str):
+                    combined = bytes(combined, 'utf-8')
+                elif isinstance(combined, memoryview):
+                    combined = bytes(combined)
+                else:
+                    combined = bytes(combined)
+
             # Check if this looks like AES256-GCM format (version + nonce + ciphertext)
             if len(combined) > 16:  # minimum: 4 (version) + 12 (nonce) + 1 (ciphertext)
                 version = int.from_bytes(combined[:4], 'big')

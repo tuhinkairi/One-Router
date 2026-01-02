@@ -11,7 +11,7 @@ from ..services.request_router import RequestRouter
 from ..auth.dependencies import get_current_user, get_api_user
 from ..services.transaction_logger import TransactionLogger
 from ..services.idempotency_service import IdempotencyService
-from ..models import ServiceCredential
+from ..models import ServiceCredential, TransactionLog
 from ..exceptions import InvalidAmountException, CurrencyAmountMismatchException
 
 logger = logging.getLogger(__name__)
