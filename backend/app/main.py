@@ -100,67 +100,50 @@ async def add_security_headers(request, call_next):
 # Rate limiting middleware
 @app.middleware("http")
 async def rate_limit_middleware(request, call_next):
-    """
-    Enforce rate limiting per API key or user.
-    Adds X-RateLimit-* headers to all responses.
-    """
+    """Simplified rate limiting - only for API endpoints"""
+    path = request.url.path
+
     # Skip rate limiting for health checks and docs
-    if request.url.path in ["/", "/docs", "/redoc", "/api/health", "/openapi.json"]:
+    if path in ["/", "/docs", "/redoc", "/api/health", "/openapi.json"]:
         response = await call_next(request)
         return response
-    
-    # Try to identify the user/API key
+
+    # Only rate limit API endpoints
+    if not path.startswith("/v1/") and not path.startswith("/api/"):
+        response = await call_next(request)
+        return response
+
+    # Extract API key or use IP
     api_key_id = None
-    limit_per_minute = 100  # Default for authenticated users
-    is_authenticated = False
-    
-    # Check for API key in Authorization header
+    limit_per_minute = 30  # Default for unauthenticated
+
+    # Try to get API key
     auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer "):
-        try:
-            api_key = auth_header.split(" ", 1)[1]
-            # Hash the API key for rate limit tracking
-            import hashlib
-            api_key_id = hashlib.sha256(api_key.encode()).hexdigest()[:16]
-            is_authenticated = True
-            limit_per_minute = 100  # API key limit
-        except Exception:
-            pass
-    
-    # If no API key, try to get from Clerk token (authenticated web user)
-    if not api_key_id:
-        try:
-            from .auth.clerk import clerk_auth
-            if auth_header.startswith("Bearer "):
-                token = auth_header.split(" ", 1)[1]
-                token_payload = await clerk_auth.verify_token(token)
-                clerk_user_id = token_payload.get("sub")
-                if clerk_user_id:
-                    api_key_id = clerk_user_id[:16]
-                    is_authenticated = True
-                    limit_per_minute = 200  # Higher limit for authenticated web users
-        except Exception:
-            pass
-    
-    # If still no identification, use IP-based rate limiting for unauthenticated users
-    if not api_key_id:
+    platform_key = request.headers.get("X-Platform-Key", "")
+
+    if auth_header.startswith("Bearer ") or platform_key:
+        api_key = auth_header.split(" ", 1)[1] if auth_header.startswith("Bearer ") else platform_key
+        import hashlib
+        api_key_id = hashlib.sha256(api_key.encode()).hexdigest()[:16]
+        limit_per_minute = 100  # Higher limit for authenticated
+    else:
+        # Use IP for anonymous requests
         client_ip = request.client.host if request.client else "unknown"
         api_key_id = f"ip_{client_ip}"
-        limit_per_minute = 30  # Strict limit for unauthenticated users
-    
+
     # Check rate limit
     try:
         is_allowed, remaining, reset_at = await cache_service.check_rate_limit(
             api_key_id=api_key_id,
             limit_per_minute=limit_per_minute
         )
-        
+
         if not is_allowed:
             return JSONResponse(
                 status_code=429,
                 content={
-                    "detail": "Rate limit exceeded",
-                    "error": "too_many_requests",
+                    "error": "rate_limit_exceeded",
+                    "message": "Too many requests. Please try again later.",
                     "retry_after": max(1, reset_at - int(__import__('time').time()))
                 },
                 headers={
@@ -170,19 +153,19 @@ async def rate_limit_middleware(request, call_next):
                     "Retry-After": str(max(1, reset_at - int(__import__('time').time())))
                 }
             )
-        
+
         # Process request
         response = await call_next(request)
-        
-        # Add rate limit headers to response
+
+        # Add rate limit headers
         response.headers["X-RateLimit-Limit"] = str(limit_per_minute)
         response.headers["X-RateLimit-Remaining"] = str(remaining)
         response.headers["X-RateLimit-Reset"] = str(reset_at)
-        response.headers["X-RateLimit-Authenticated"] = "true" if is_authenticated else "false"
-        
+
         return response
+
     except Exception as e:
-        # If rate limiting fails, log but allow request (fail open)
+        # Fail open on error
         import logging
         logging.exception(f"Rate limiting error: {e}")
         response = await call_next(request)
@@ -213,98 +196,87 @@ async def api_version_middleware(request: Request, call_next):
 @app.middleware("http")
 async def csrf_validation_middleware(request: Request, call_next):
     """
-    Validate CSRF tokens for state-changing operations.
-    
-    Skips validation for:
-    - GET/HEAD/OPTIONS requests (safe methods)
-    - CSRF token endpoints
-    - Health checks
-    - Public endpoints (registration, login)
+    CSRF validation - ONLY for browser-based requests, NOT API endpoints
     """
     method = request.method
     path = request.url.path
-    
-    # Skip CSRF validation for safe methods
+
+    # Skip CSRF for safe methods
     if method in ["GET", "HEAD", "OPTIONS"]:
         return await call_next(request)
-    
-    # Skip CSRF validation for these paths
+
+    # Skip CSRF for ALL API endpoints (they use API key auth instead)
+    api_paths = [
+        "/v1/",           # All unified API endpoints
+        "/api/keys",      # API key management
+        "/webhooks/",     # Webhook receivers
+    ]
+
+    if any(path.startswith(api_path) for api_path in api_paths):
+        return await call_next(request)
+
+    # Skip CSRF for routes with API key in header
+    if request.headers.get("Authorization") or request.headers.get("X-Platform-Key"):
+        return await call_next(request)
+
+    # Only validate CSRF for browser-based dashboard requests
     skip_paths = [
-        "/api/csrf/token",
-        "/api/csrf/validate",
+        "/api/csrf/",
         "/api/health",
         "/docs",
         "/redoc",
         "/openapi.json",
-        "/api/onboarding",  # Registration/signup endpoints
-        "/v1/payments",  # Payment endpoints (uses API key auth)
-        "/v1/subscriptions",  # Subscription endpoints (uses API key auth)
-        "/api/v1/payment",  # Alternative payment path
-        "/api/v1/payment/",  # Payment with ID
-        "/api/v1/subscription",  # Alternative subscription path
-        "/api/v1/subscriptions",  # Alternative subscriptions path
-        "/v1/sms",  # Communications endpoint (uses API key auth)
-        "/v1/email",  # Communications endpoint (uses API key auth)
-        "/v1/services",  # Service discovery (read-only)
     ]
-    
+
     if any(path.startswith(skip_path) for skip_path in skip_paths):
         return await call_next(request)
-    
-    # Extract CSRF token from header
+
+    # Now check CSRF token for browser requests
     csrf_token = request.headers.get("X-CSRF-Token", "")
-    
+
     if not csrf_token:
-        # CSRF token missing - this is an error for state-changing operations
         from .exceptions import ErrorCode, ErrorDetail, ErrorResponse
         request_id = getattr(request.state, 'request_id', str(uuid.uuid4()))
-        
+
         return JSONResponse(
             status_code=403,
             content=ErrorResponse(
                 error=ErrorDetail(
                     code=ErrorCode.INVALID_REQUEST_FORMAT,
-                    message="CSRF token missing or invalid",
-                    details={"field": "X-CSRF-Token"}
+                    message="CSRF token missing. This endpoint requires CSRF protection for browser requests.",
+                    details={"hint": "Use API key authentication for programmatic access"}
                 ),
                 request_id=request_id,
                 timestamp=datetime.utcnow().isoformat()
             ).dict()
         )
-    
-    # Get session ID for validation - try Clerk auth header first, then cookie
+
+    # Validate token (existing logic)
     session_id = None
-    
-    # Try to extract from Clerk token
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
         try:
-            # Extract user ID from JWT without full verification (quick extraction)
             import jwt
             token = auth_header.split(" ", 1)[1]
-            # Decode without verification to extract sub claim
             payload = jwt.decode(token, options={"verify_signature": False})
             session_id = payload.get("sub")
         except Exception:
             pass
-    
-    # Fallback to session cookie
+
     if not session_id:
         session_id = request.cookies.get("session_id")
-    
-    # Generate random session ID for CSRF-only requests if no auth session exists
+
     if not session_id:
         import secrets
         session_id = secrets.token_urlsafe(32)
-    
-    # Validate CSRF token
+
     from app.services.csrf_manager import CSRFTokenManager
     is_valid = await CSRFTokenManager.validate_token(session_id, csrf_token)
-    
+
     if not is_valid:
         from .exceptions import ErrorCode, ErrorDetail, ErrorResponse
         request_id = getattr(request.state, 'request_id', str(uuid.uuid4()))
-        
+
         return JSONResponse(
             status_code=403,
             content=ErrorResponse(
@@ -317,8 +289,7 @@ async def csrf_validation_middleware(request: Request, call_next):
                 timestamp=datetime.utcnow().isoformat()
             ).dict()
         )
-    
-    # CSRF validation passed, continue with request
+
     request.state.csrf_validated = True
     return await call_next(request)
 

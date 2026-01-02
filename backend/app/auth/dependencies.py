@@ -56,75 +56,73 @@ class APIKeyAuth:
 api_key_auth = APIKeyAuth()
 
 # Dependency for API key protected routes
-async def get_api_user(authorization: Optional[str] = Header(None, alias="Authorization"), platform_key: Optional[str] = Header(None, alias="X-Platform-Key"), db: AsyncSession = Depends(get_db)) -> dict:
-    """Get user and API key from API key for SDK calls"""
-    print(f"DEBUG: get_api_user called with authorization={authorization[:10] if authorization else None}, platform_key={platform_key[:10] if platform_key else None}")
-    api_key = None
+async def get_api_user(
+    authorization: Optional[str] = Header(None),
+    x_platform_key: Optional[str] = Header(None, alias="X-Platform-Key"),
+    db: AsyncSession = Depends(get_db)
+) -> dict:
+    """
+    Simplified API authentication - extract user from API key
 
-    # Try Authorization header first (Bearer token format)
+    Accepts API key in either:
+    - Authorization: Bearer <key>
+    - X-Platform-Key: <key>
+    """
+
+    # Extract API key
+    api_key = None
     if authorization and authorization.startswith("Bearer "):
         api_key = authorization.split(" ", 1)[1]
-    # Fallback to X-Platform-Key header (SDK format)
-    elif platform_key:
-        api_key = platform_key
-    else:
-        print("DEBUG: No API key provided")
-        raise HTTPException(status_code=401, detail="Authorization header (Bearer token) or X-Platform-Key header required")
+    elif x_platform_key:
+        api_key = x_platform_key
 
-    print(f"DEBUG: API key extracted: {api_key[:10]}...")
+    if not api_key:
+        raise HTTPException(
+            status_code=401,
+            detail="API key required. Provide in Authorization header or X-Platform-Key header."
+        )
 
-    # Hash the API key
-    import hashlib
+    # Hash and lookup
     key_hash = hashlib.sha256(api_key.encode()).hexdigest()
 
-    print(f"DEBUG: Key hash: {key_hash[:10]}...")
-
-    # Look up API key in database
-    from ..models import ApiKey, User
-    try:
-        result = await db.execute(
-            select(ApiKey).where(
-                ApiKey.key_hash == key_hash,
-                ApiKey.is_active == True
-            )
+    result = await db.execute(
+        select(ApiKey, User)
+        .join(User, ApiKey.user_id == User.id)
+        .where(
+            ApiKey.key_hash == key_hash,
+            ApiKey.is_active == True
         )
-        api_key_obj = result.scalar_one_or_none()
-        print(f"DEBUG: API key obj found: {api_key_obj is not None}")
-    except Exception as e:
-        print(f"DEBUG: Error looking up API key: {e}")
-        raise
+    )
+    row = result.first()
 
-    if not api_key_obj:
-        print("DEBUG: API key not found or inactive")
-        raise HTTPException(status_code=401, detail="Invalid or inactive API key")
+    if not row:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or inactive API key"
+        )
 
-    # Update last_used_at timestamp
+    api_key_obj, user = row
+
+    # Check expiration
+    if api_key_obj.expires_at and api_key_obj.expires_at < datetime.utcnow():
+        raise HTTPException(
+            status_code=401,
+            detail="API key has expired"
+        )
+
+    # Update last used (don't await - fire and forget)
     api_key_obj.last_used_at = datetime.utcnow()
+    db.add(api_key_obj)
     await db.commit()
 
-    # Get user
-    try:
-        result = await db.execute(select(User).where(User.id == api_key_obj.user_id))
-        user = result.scalar_one_or_none()
-        print(f"DEBUG: User found: {user is not None}")
-    except Exception as e:
-        print(f"DEBUG: Error looking up user: {e}")
-        raise
-
-    if not user:
-        print("DEBUG: User not found for API key")
-        raise HTTPException(status_code=401, detail="User not found for API key")
-
-    result_dict = {
+    # Return simplified auth data
+    return {
         "id": str(user.id),
-        "clerk_user_id": user.clerk_user_id,
         "email": user.email,
         "name": user.name,
         "api_key": api_key_obj,
-        "environment": api_key_obj.environment  # Include environment from API key
+        "environment": api_key_obj.environment
     }
-    print(f"DEBUG: Returning auth data for user {user.id}")
-    return result_dict
 
 # Dependency for protected routes
 async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)):

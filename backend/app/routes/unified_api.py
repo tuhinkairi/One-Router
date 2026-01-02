@@ -135,221 +135,108 @@ async def create_payment_order(
     auth_data = Depends(get_api_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Create payment order (unified API) with proper transaction management and idempotency"""
+    """
+    Create payment order - SIMPLIFIED VERSION
+
+    Focus: Make it work reliably, not perfectly
+    """
     import time
-    from ..models import TransactionLog
-    from ..cache import cache_service
     import uuid
 
-    # Safety check for auth_data
-    if not auth_data:
-        raise HTTPException(status_code=401, detail="Authentication required")
-
-    # Extract user information from auth_data
     user_id = auth_data["id"]
     api_key_obj = auth_data["api_key"]
+    environment = auth_data.get("environment", "test")
 
-    # Initialize idempotency service
-    from ..services.idempotency_service import IdempotencyService
-    idempotency_service = IdempotencyService()
+    # Auto-select provider if not specified
+    provider = request.provider or "razorpay"
 
-    # Determine provider with smart selection based on payment method
-    provider = request.provider
-    if not provider and request.method:
-        from ..services.payment_method_validator import ProviderCapabilities
-        provider = ProviderCapabilities.get_preferred_provider(request.method, request.currency)
-
-    # Default fallback
-    provider = provider or "razorpay"
     start_time = time.time()
+    transaction_id = f"txn_{uuid.uuid4().hex[:16]}"
 
-    # Generate or use provided idempotency key
-    idempotency_key = request.idempotency_key or f"idempotency_{user_id}_{int(start_time)}_{uuid.uuid4().hex[:8]}"
-    transaction_id = f"txn_{user_id}_{int(start_time)}_{uuid.uuid4().hex[:8]}"
-
-    # Use actual API key ID from auth data
-    api_key_id = str(api_key_obj.id)
-
-    # Acquire lock to prevent duplicate processing
-    lock_acquired = await cache_service.acquire_idempotency_lock(idempotency_key)
-    if not lock_acquired:
-        raise HTTPException(
-            status_code=409,
-            detail="Duplicate request in progress. Please retry after a moment."
+    try:
+        # Get adapter
+        adapter = await request_router.get_adapter(
+            user_id,
+            provider,
+            db,
+            target_environment=environment
         )
 
-    # Check if response is already cached in database
-    try:
-        cached_response = await idempotency_service.get_idempotency_response(api_key_id, idempotency_key)
-        if cached_response:
-            return UnifiedPaymentResponse(**cached_response['response_body'])
-    except Exception as e:
-        logger.warning(f"Idempotency check failed: {e}")
+        # Create order
+        order_kwargs = {
+            "amount": float(request.amount),
+            "currency": request.currency,
+            "receipt": request.receipt,
+        }
 
-    # Validate request hash if key exists
-    request_body_str = json.dumps(request.dict(), sort_keys=True, default=str)
-    try:
-        is_valid = await idempotency_service.validate_request_hash(api_key_id, idempotency_key, request_body_str)
-        if not is_valid:
-            raise HTTPException(
-                status_code=422,
-                detail="Idempotency key already used with different request parameters"
-            )
-    except Exception as e:
-        logger.warning(f"Request hash validation failed: {e}")
+        # Add optional params
+        if request.method:
+            order_kwargs["method"] = request.method
+        if request.upi_app:
+            order_kwargs["upi_app"] = request.upi_app
+        if request.emi_plan:
+            order_kwargs["emi_plan"] = request.emi_plan
+        if request.card_network:
+            order_kwargs["card_network"] = request.card_network
 
-    # Create initial log entry within transaction
-    request_payload = json.loads(json.dumps(request.dict(), default=str))
-    log_entry = TransactionLog(
-        user_id=user_id,
-        api_key_id=api_key_obj.id,
-        transaction_id=transaction_id,
-        service_name=provider,
-        endpoint="/payments/orders",
-        http_method="POST",
-        request_payload=request_payload,
-        status="pending",
-        environment=auth_data.get("environment", "test")
-    )
+        result = await adapter.create_order(**order_kwargs)
 
-    try:
-        # Start transaction block
-        async with db.begin_nested():
-            db.add(log_entry)
-            await db.flush()
+        # Log transaction (async, don't block response)
+        response_time_ms = int((time.time() - start_time) * 1000)
 
-            # Get service adapter with proper environment
-            adapter = await request_router.get_adapter(
-                user_id,
-                provider,
-                db,
-                target_environment=auth_data.get("environment", "test")
-            )
+        log_entry = TransactionLog(
+            user_id=user_id,
+            api_key_id=api_key_obj.id,
+            transaction_id=transaction_id,
+            service_name=provider,
+            endpoint="/payments/orders",
+            http_method="POST",
+            request_payload=request.dict(),
+            response_payload=result,
+            response_status=200,
+            response_time_ms=response_time_ms,
+            status="completed",
+            environment=environment,
+            idempotency_key=request.idempotency_key
+        )
 
-            # Prepare notes with user_id for webhook identification
-            notes = request.notes or {}
-            notes["onerouter_user_id"] = str(user_id)
-
-            # Create order through adapter
-            order_kwargs = {
-                "amount": float(request.amount),
-                "currency": request.currency,
-                "receipt": request.receipt,
-            }
-
-            # Validate payment method compatibility with provider
-            if hasattr(request, 'method') and request.method:
-                from ..services.payment_method_validator import ProviderCapabilities
-                validation_result = ProviderCapabilities.validate_method_combination(
-                    provider=provider,
-                    method=request.method,
-                    upi_app=getattr(request, 'upi_app', None),
-                    card_network=getattr(request, 'card_network', None),
-                    wallet_provider=getattr(request, 'wallet_provider', None)
-                )
-
-                if not validation_result["valid"]:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Payment method validation failed: {', '.join(validation_result['errors'])}"
-                    )
-
-            # Add payment method parameters if provided
-            if hasattr(request, 'method') and request.method:
-                order_kwargs["method"] = request.method
-            if hasattr(request, 'upi_app') and request.upi_app:
-                order_kwargs["upi_app"] = request.upi_app
-            if hasattr(request, 'emi_plan') and request.emi_plan:
-                order_kwargs["emi_plan"] = request.emi_plan
-            if hasattr(request, 'card_network') and request.card_network:
-                order_kwargs["card_network"] = request.card_network
-            if hasattr(request, 'wallet_provider') and request.wallet_provider:
-                order_kwargs["wallet_provider"] = request.wallet_provider
-            if hasattr(request, 'bank_code') and request.bank_code:
-                order_kwargs["bank_code"] = request.bank_code
-
-            if provider == "razorpay":
-                order_kwargs["notes"] = notes
-            elif provider == "paypal":
-                order_kwargs["custom_id"] = str(user_id)
-
-            result = await adapter.create_order(**order_kwargs)
-
-            # Enhance response with payment method information
-            if hasattr(request, 'method') and request.method:
-                result["payment_method"] = request.method
-
-                method_details = {}
-                if hasattr(request, 'upi_app') and request.upi_app:
-                    method_details["upi_app"] = request.upi_app
-                if hasattr(request, 'emi_plan') and request.emi_plan:
-                    method_details["emi_plan"] = request.emi_plan
-                if hasattr(request, 'card_network') and request.card_network:
-                    method_details["card_network"] = request.card_network
-                if hasattr(request, 'wallet_provider') and request.wallet_provider:
-                    method_details["wallet_provider"] = request.wallet_provider
-                if hasattr(request, 'bank_code') and request.bank_code:
-                    method_details["bank_code"] = request.bank_code
-
-                if method_details:
-                    result["method_details"] = method_details
-
-            # Calculate response time
-            response_time_ms = int((time.time() - start_time) * 1000)
-
-            # Update log entry with success
-            log_entry.response_payload = result
-            log_entry.response_status = 200
-            log_entry.response_time_ms = response_time_ms
-            log_entry.status = "completed"
-            log_entry.provider_txn_id = result.get("provider_order_id") or result.get("id")
-            log_entry.idempotency_key = idempotency_key
-
-        # Commit the transaction
+        db.add(log_entry)
         await db.commit()
-
-        # Store the response for idempotent retrieval in database
-        try:
-            await idempotency_service.store_idempotency_response(
-                db=db,
-                api_key_id=api_key_id,
-                idempotency_key=idempotency_key,
-                endpoint="/payments/orders",
-                request_body=request_body_str,
-                response_body=result,
-                response_status_code=200
-            )
-            await db.commit()
-        except Exception as e:
-            logger.warning(f"Failed to store idempotency response: {e}")
 
         return UnifiedPaymentResponse(**result)
 
     except HTTPException:
         raise
+
     except Exception as e:
-        # Calculate response time for failed request
+        # Log error
+        logger.exception(f"Payment creation failed: {e}")
+
         response_time_ms = int((time.time() - start_time) * 1000)
 
-        # Log the exception
-        logger.exception(f"Error creating payment order for user {user_id}: {str(e)}")
+        log_entry = TransactionLog(
+            user_id=user_id,
+            api_key_id=api_key_obj.id,
+            transaction_id=transaction_id,
+            service_name=provider,
+            endpoint="/payments/orders",
+            http_method="POST",
+            request_payload=request.dict(),
+            response_payload={"error": str(e)},
+            response_status=500,
+            response_time_ms=response_time_ms,
+            status="failed",
+            error_message=str(e),
+            environment=environment
+        )
 
-        # Update log entry with failure status
-        try:
-            log_entry.response_payload = {"error": str(e)}
-            log_entry.response_status = 500
-            log_entry.response_time_ms = response_time_ms
-            log_entry.status = "failed"
-            log_entry.error_message = str(e)
-            await db.commit()
-        except Exception as log_err:
-            logger.exception(f"Failed to log transaction failure: {str(log_err)}")
-            await db.rollback()
+        db.add(log_entry)
+        await db.commit()
 
-        raise HTTPException(status_code=500, detail=f"Payment creation failed: {str(e)}")
-    finally:
-        # Always release the lock
-        await cache_service.release_idempotency_lock(idempotency_key)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Payment creation failed: {str(e)}"
+        )
 
 @router.get("/subscriptions/{subscription_id}")
 async def get_subscription(
