@@ -141,6 +141,10 @@ async def create_payment_order(
     from ..cache import cache_service
     import uuid
 
+    # Safety check for auth_data
+    if not auth_data:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
     # Extract user information from auth_data
     user_id = auth_data["id"]
     api_key_obj = auth_data["api_key"]

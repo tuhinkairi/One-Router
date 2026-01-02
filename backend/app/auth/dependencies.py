@@ -58,6 +58,7 @@ api_key_auth = APIKeyAuth()
 # Dependency for API key protected routes
 async def get_api_user(authorization: Optional[str] = Header(None, alias="Authorization"), platform_key: Optional[str] = Header(None, alias="X-Platform-Key"), db: AsyncSession = Depends(get_db)) -> dict:
     """Get user and API key from API key for SDK calls"""
+    print(f"DEBUG: get_api_user called with authorization={authorization[:10] if authorization else None}, platform_key={platform_key[:10] if platform_key else None}")
     api_key = None
 
     # Try Authorization header first (Bearer token format)
@@ -67,40 +68,63 @@ async def get_api_user(authorization: Optional[str] = Header(None, alias="Author
     elif platform_key:
         api_key = platform_key
     else:
+        print("DEBUG: No API key provided")
         raise HTTPException(status_code=401, detail="Authorization header (Bearer token) or X-Platform-Key header required")
-    
+
+    print(f"DEBUG: API key extracted: {api_key[:10]}...")
+
     # Hash the API key
     import hashlib
     key_hash = hashlib.sha256(api_key.encode()).hexdigest()
-    
+
+    print(f"DEBUG: Key hash: {key_hash[:10]}...")
+
     # Look up API key in database
     from ..models import ApiKey, User
-    result = await db.execute(
-        select(ApiKey).where(
-            ApiKey.key_hash == key_hash,
-            ApiKey.is_active == True
+    try:
+        result = await db.execute(
+            select(ApiKey).where(
+                ApiKey.key_hash == key_hash,
+                ApiKey.is_active == True
+            )
         )
-    )
-    api_key_obj = result.scalar_one_or_none()
-    
+        api_key_obj = result.scalar_one_or_none()
+        print(f"DEBUG: API key obj found: {api_key_obj is not None}")
+    except Exception as e:
+        print(f"DEBUG: Error looking up API key: {e}")
+        raise
+
     if not api_key_obj:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-    
+        print("DEBUG: API key not found or inactive")
+        raise HTTPException(status_code=401, detail="Invalid or inactive API key")
+
+    # Update last_used_at timestamp
+    api_key_obj.last_used_at = datetime.utcnow()
+    await db.commit()
+
     # Get user
-    result = await db.execute(select(User).where(User.id == api_key_obj.user_id))
-    user = result.scalar_one_or_none()
-    
+    try:
+        result = await db.execute(select(User).where(User.id == api_key_obj.user_id))
+        user = result.scalar_one_or_none()
+        print(f"DEBUG: User found: {user is not None}")
+    except Exception as e:
+        print(f"DEBUG: Error looking up user: {e}")
+        raise
+
     if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    
-        return {
-            "id": str(user.id),
-            "clerk_user_id": user.clerk_user_id,
-            "email": user.email,
-            "name": user.name,
-            "api_key": api_key_obj,
-            "environment": api_key_obj.environment  # Include environment from API key
-        }
+        print("DEBUG: User not found for API key")
+        raise HTTPException(status_code=401, detail="User not found for API key")
+
+    result_dict = {
+        "id": str(user.id),
+        "clerk_user_id": user.clerk_user_id,
+        "email": user.email,
+        "name": user.name,
+        "api_key": api_key_obj,
+        "environment": api_key_obj.environment  # Include environment from API key
+    }
+    print(f"DEBUG: Returning auth data for user {user.id}")
+    return result_dict
 
 # Dependency for protected routes
 async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)):
