@@ -9,7 +9,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from ..database import get_db
-from ..models import User
+from ..models import ApiKey, User
 from .clerk import clerk_auth
 
 # API Key Authentication (for SDK users)
