@@ -93,13 +93,14 @@ async def get_api_user(authorization: Optional[str] = Header(None, alias="Author
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     
-    return {
-        "id": str(user.id),
-        "clerk_user_id": user.clerk_user_id,
-        "email": user.email,
-        "name": user.name,
-        "api_key": api_key_obj
-    }
+        return {
+            "id": str(user.id),
+            "clerk_user_id": user.clerk_user_id,
+            "email": user.email,
+            "name": user.name,
+            "api_key": api_key_obj,
+            "environment": api_key_obj.environment  # Include environment from API key
+        }
 
 # Dependency for protected routes
 async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)):
