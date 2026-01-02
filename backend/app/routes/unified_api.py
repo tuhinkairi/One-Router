@@ -180,7 +180,7 @@ async def create_payment_order(
 
     # Check if response is already cached in database
     try:
-        cached_response = await idempotency_service.get_idempotency_response(idempotency_key)
+        cached_response = await idempotency_service.get_idempotency_response(api_key_id, idempotency_key)
         if cached_response:
             return UnifiedPaymentResponse(**cached_response['response_body'])
     except Exception as e:
@@ -189,7 +189,7 @@ async def create_payment_order(
     # Validate request hash if key exists
     request_body_str = json.dumps(request.dict(), sort_keys=True, default=str)
     try:
-        is_valid = await idempotency_service.validate_request_hash(idempotency_key, request_body_str)
+        is_valid = await idempotency_service.validate_request_hash(api_key_id, idempotency_key, request_body_str)
         if not is_valid:
             raise HTTPException(
                 status_code=422,
@@ -199,6 +199,7 @@ async def create_payment_order(
         logger.warning(f"Request hash validation failed: {e}")
 
     # Create initial log entry within transaction
+    request_payload = json.loads(json.dumps(request.dict(), default=str))
     log_entry = TransactionLog(
         user_id=user_id,
         api_key_id=api_key_obj.id,
@@ -206,7 +207,7 @@ async def create_payment_order(
         service_name=provider,
         endpoint="/payments/orders",
         http_method="POST",
-        request_payload=request.dict(),
+        request_payload=request_payload,
         status="pending",
         environment=auth_data.get("environment", "test")
     )
