@@ -26,8 +26,6 @@ export default function SDKDocsPage() {
     { id: 'error-handling', title: 'Error Handling', icon: AlertTriangle }
   ];
 
-
-
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Header */}
@@ -94,15 +92,27 @@ export default function SDKDocsPage() {
               <div className="bg-[#1a1a1a] border border-[#222] rounded-lg p-4 mt-6">
                 <h3 className="text-lg font-semibold text-white mb-4">Quick Links</h3>
                 <div className="space-y-2">
-                  <Link href="/onboarding" className="block text-[#888] hover:text-cyan-400 text-sm">
-                    Get Started Free →
-                  </Link>
                   <Link href="/api-keys" className="block text-[#888] hover:text-cyan-400 text-sm">
                     Generate API Keys →
                   </Link>
-                  <Link href="/contact" className="block text-[#888] hover:text-cyan-400 text-sm">
-                    Need Help? →
-                  </Link>
+                  <span className="block text-[#888] text-sm">
+                    Backend: one-backend.stack-end.com
+                  </span>
+                </div>
+              </div>
+
+              {/* Pricing Info */}
+              <div className="bg-[#1a1a1a] border border-[#222] rounded-lg p-4 mt-6">
+                <h3 className="text-lg font-semibold text-white mb-4">💰 Pricing</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-[#888]">Per API Call</span>
+                    <span className="text-cyan-400">1 credit ($0.01)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#888]">Free Tier</span>
+                    <span className="text-green-400">1,000 credits/mo</span>
+                  </div>
                 </div>
               </div>
             </nav>
@@ -128,7 +138,7 @@ function InstallationSection() {
       <div>
         <h1 className="text-4xl font-bold text-white mb-4">SDK Installation</h1>
         <p className="text-xl text-[#888] leading-relaxed">
-          Install and set up the OneRouter Python SDK for your project.
+          Install the OneRouter Python SDK for your project. Supports Python 3.8+ with async/sync interfaces.
         </p>
       </div>
 
@@ -143,7 +153,7 @@ function InstallationSection() {
               <pre className="text-sm text-green-400">pip install onerouter</pre>
             </div>
             <p className="text-sm text-[#888] mt-2">
-              Or install with optional async dependencies:
+              With async support:
             </p>
             <div className="bg-[#1a1a1a] border border-[#222] rounded p-4 mt-2">
               <pre className="text-sm text-green-400">pip install onerouter[async]</pre>
@@ -162,7 +172,14 @@ function InstallationSection() {
           <div>
             <h3 className="text-lg font-semibold text-cyan-400 mb-3">Verify Installation</h3>
             <div className="bg-[#1a1a1a] border border-[#222] rounded p-4">
-              <pre className="text-sm text-cyan-400">python -c &quot;import onerouter; print(&apos;OneRouter SDK installed successfully!&apos;)&quot;</pre>
+              <pre className="text-sm text-cyan-400">python -c "import onerouter; print('OneRouter SDK installed successfully!')"</pre>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold text-cyan-400 mb-3">JavaScript SDK</h3>
+            <div className="bg-[#1a1a1a] border border-[#222] rounded p-4">
+              <pre className="text-sm text-green-400">npm install @onerouter/sdk</pre>
             </div>
           </div>
         </CardContent>
@@ -170,29 +187,24 @@ function InstallationSection() {
 
       <Card className="bg-[#0a0a0a] border-[#222]">
         <CardHeader>
-          <CardTitle className="text-white">SDK Versions</CardTitle>
+          <CardTitle className="text-white">Backend URLs</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="p-4 bg-[#1a1a1a] rounded border border-[#222]">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="text-white font-medium">Latest Version</h4>
-                <Badge className="bg-green-500/20 text-green-400">v2.0.0</Badge>
+                <h4 className="text-white font-medium">Development</h4>
+                <Badge className="bg-yellow-500/20 text-yellow-400">Local</Badge>
               </div>
-              <p className="text-sm text-[#888]">Released December 2025</p>
-              <ul className="text-sm text-[#888] mt-2 space-y-1">
-                <li>• Enhanced error handling</li>
-                <li>• Async client support</li>
-                <li>• Improved webhook validation</li>
-              </ul>
+              <code className="text-sm text-white">http://localhost:8000</code>
             </div>
 
             <div className="p-4 bg-[#1a1a1a] rounded border border-[#222]">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="text-white font-medium">Legacy Version</h4>
-                <Badge variant="secondary">v1.x</Badge>
+                <h4 className="text-white font-medium">Production</h4>
+                <Badge className="bg-green-500/20 text-green-400">Live</Badge>
               </div>
-              <p className="text-sm text-[#888]">Deprecated - Upgrade recommended</p>
+              <code className="text-sm text-white">https://one-backend.stack-end.com</code>
             </div>
           </div>
         </CardContent>
@@ -207,7 +219,7 @@ function QuickStartSection() {
       <div>
         <h1 className="text-4xl font-bold text-white mb-4">Quick Start</h1>
         <p className="text-xl text-[#888] leading-relaxed">
-          Get started with OneRouter SDK in minutes.
+          Get started with OneRouter SDK in minutes. Configure your credentials and make your first API call.
         </p>
       </div>
 
@@ -215,46 +227,28 @@ function QuickStartSection() {
         <CardContent className="p-6">
           <h3 className="text-lg font-semibold text-cyan-400 mb-4">Basic Setup</h3>
           <div className="bg-[#1a1a1a] border border-[#222] rounded p-4">
-            <pre className="text-sm text-cyan-400">{`import onerouter
+            <pre className="text-sm text-cyan-400">{`from onerouter import OneRouter
 
-# Initialize the client
-client = onerouter.Client(
-    api_key="rzp_test_xxxxxxxxxxxxxx",
-    api_secret="secret_xxxxxxxxxxxxxx",
-    environment="test"  # or "live"
+# Initialize with your API key
+client = OneRouter(
+    api_key="unf_live_your_api_key_here",
+    base_url="https://one-backend.stack-end.com"
 )
 
-# Create a payment order
-order = client.orders.create({
-    "amount": 1000,  # Amount in cents (1000 = $10.00)
-    "currency": "USD",
-    "receipt": "order_123",
-    "notes": {
-        "customer_id": "cust_123"
-    }
-})
+# Send SMS
+sms = client.sms.send(
+    to="+1234567890",
+    body="Hello from OneRouter!"
+)
+print(f"SMS sent: {sms['message_id']}")
 
-print(f"Order created: {order['id']}")
-print(f"Payment URL: {order['payment_link']}")`}
-          </pre>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-[#0a0a0a] border-[#222]">
-        <CardContent className="p-6">
-          <h3 className="text-lg font-semibold text-cyan-400 mb-4">Handle Payment Completion</h3>
-          <div className="bg-[#1a1a1a] border border-[#222] rounded p-4">
-            <pre className="text-sm text-cyan-400">{`# Capture the payment (if using manual capture)
-payment = client.payments.capture(order['id'], {
-    "amount": 1000
-})
-
-print(f"Payment status: {payment['status']}")
-
-# Check payment details
-payment_details = client.payments.get(payment['id'])
-print(f"Payment method: {payment_details.get('method', 'N/A')}")`}
+# Create Payment
+payment = client.payments.create(
+    amount=1000,  # ₹10.00
+    currency="INR",
+    customer_id="cust_123"
+)
+print(f"Payment created: {payment['transaction_id']}")`}
           </pre>
           </div>
         </CardContent>
@@ -267,8 +261,42 @@ print(f"Payment method: {payment_details.get('method', 'N/A')}")`}
             <div>
               <h3 className="text-lg font-semibold text-green-400 mb-2">Success!</h3>
               <p className="text-[#888]">
-                You&apos;ve created your first payment order with OneRouter SDK. The payment link can be shared with customers to complete the transaction.
+                You've made your first API call with OneRouter. Your credentials are encrypted and stored securely.
+                The API routes to your provider accounts (Razorpay, Twilio, etc.) using your configured credentials.
               </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-[#0a0a0a] border-[#222]">
+        <CardContent className="p-6">
+          <h3 className="text-lg font-semibold text-cyan-400 mb-4">Environment Configuration</h3>
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-white font-medium mb-2">Using Environment Variables</h4>
+              <div className="bg-[#1a1a1a] border border-[#222] rounded p-4">
+                <pre className="text-sm text-cyan-400">{`# .env file
+ONEROUTER_API_KEY=unf_live_your_key_here
+ONEROUTER_BASE_URL=https://one-backend.stack-end.com
+ONEROUTER_TIMEOUT=30
+ONEROUTER_MAX_RETRIES=3`}
+                </pre>
+              </div>
+            </div>
+            <div>
+              <h4 className="text-white font-medium mb-2">Python Code</h4>
+              <div className="bg-[#1a1a1a] border border-[#222] rounded p-4">
+                <pre className="text-sm text-cyan-400">{`import os
+from onerouter import OneRouter
+
+client = OneRouter(
+    api_key=os.getenv("ONEROUTER_API_KEY"),
+    base_url=os.getenv("ONEROUTER_BASE_URL", "https://one-backend.stack-end.com"),
+    timeout=int(os.getenv("ONEROUTER_TIMEOUT", "30")),
+    max_retries=int(os.getenv("ONEROUTER_MAX_RETRIES", "3"))
+)`}
+              </pre>
             </div>
           </div>
         </CardContent>
@@ -278,32 +306,32 @@ print(f"Payment method: {payment_details.get('method', 'N/A')}")`}
 }
 
 function APIReferenceSection() {
-  const [activeMethod, setActiveMethod] = useState('orders');
+  const [activeMethod, setActiveMethod] = useState('sms');
 
   const methods = {
-    orders: {
-      title: 'Orders',
+    sms: {
+      title: 'SMS',
       methods: [
         {
-          name: 'create',
-          signature: 'client.orders.create(data)',
-          description: 'Create a new payment order',
+          name: 'send',
+          signature: 'client.sms.send(to, body, from_number=None, idempotency_key=None)',
+          description: 'Send an SMS message',
           params: [
-            { name: 'amount', type: 'int', required: true, desc: 'Amount in smallest currency unit' },
-            { name: 'currency', type: 'str', required: true, desc: 'Currency code (USD, INR, EUR)' },
-            { name: 'receipt', type: 'str', required: false, desc: 'Receipt number' },
-            { name: 'notes', type: 'dict', required: false, desc: 'Additional metadata' }
+            { name: 'to', type: 'str', required: true, desc: 'Phone number in E.164 format (+1234567890)' },
+            { name: 'body', type: 'str', required: true, desc: 'Message content' },
+            { name: 'from_number', type: 'str', required: false, desc: 'Custom sender number' },
+            { name: 'idempotency_key', type: 'str', required: false, desc: 'Prevent duplicate sends' }
           ],
-          returns: 'Order object with id, payment_link, and status'
+          returns: '{message_id, status, cost, provider, created_at}'
         },
         {
-          name: 'get',
-          signature: 'client.orders.get(order_id)',
-          description: 'Retrieve order details',
+          name: 'get_status',
+          signature: 'client.sms.get_status(message_id)',
+          description: 'Get SMS delivery status',
           params: [
-            { name: 'order_id', type: 'str', required: true, desc: 'Order ID to retrieve' }
+            { name: 'message_id', type: 'str', required: true, desc: 'SMS message ID' }
           ],
-          returns: 'Order object with full details'
+          returns: '{message_id, status, to, from, body, delivered_at}'
         }
       ]
     },
@@ -311,64 +339,53 @@ function APIReferenceSection() {
       title: 'Payments',
       methods: [
         {
-          name: 'capture',
-          signature: 'client.payments.capture(payment_id, data)',
-          description: 'Capture an authorized payment',
+          name: 'create',
+          signature: 'client.payments.create(amount, currency, customer_id, payment_method)',
+          description: 'Create a payment order',
           params: [
-            { name: 'payment_id', type: 'str', required: true, desc: 'Payment ID to capture' },
-            { name: 'amount', type: 'int', required: false, desc: 'Amount to capture (partial capture)' }
+            { name: 'amount', type: 'int', required: true, desc: 'Amount in smallest currency unit' },
+            { name: 'currency', type: 'str', required: true, desc: 'Currency code (INR, USD, EUR)' },
+            { name: 'customer_id', type: 'str', required: true, desc: 'Customer identifier' },
+            { name: 'payment_method', type: 'dict', required: true, desc: 'Payment method details' }
           ],
-          returns: 'Payment object with updated status'
+          returns: '{transaction_id, provider, status, checkout_url, provider_order_id}'
         },
         {
           name: 'get',
-          signature: 'client.payments.get(payment_id)',
-          description: 'Retrieve payment details',
+          signature: 'client.payments.get(transaction_id)',
+          description: 'Get payment details',
           params: [
-            { name: 'payment_id', type: 'str', required: true, desc: 'Payment ID to retrieve' }
+            { name: 'transaction_id', type: 'str', required: true, desc: 'Transaction ID' }
           ],
-          returns: 'Payment object with full details'
-        }
-      ]
-    },
-    refunds: {
-      title: 'Refunds',
-      methods: [
-        {
-          name: 'create',
-          signature: 'client.refunds.create(data)',
-          description: 'Create a refund',
-          params: [
-            { name: 'payment_id', type: 'str', required: true, desc: 'Payment ID to refund' },
-            { name: 'amount', type: 'int', required: false, desc: 'Refund amount (partial refund)' }
-          ],
-          returns: 'Refund object with refund details'
-        }
-      ]
-    },
-    subscriptions: {
-      title: 'Subscriptions',
-      methods: [
-        {
-          name: 'create',
-          signature: 'client.subscriptions.create(data)',
-          description: 'Create a subscription',
-          params: [
-            { name: 'plan_id', type: 'str', required: true, desc: 'Plan identifier' },
-            { name: 'total_count', type: 'int', required: true, desc: 'Number of billing cycles' },
-            { name: 'customer_id', type: 'str', required: false, desc: 'Customer identifier' }
-          ],
-          returns: 'Subscription object with subscription details'
+          returns: '{transaction_id, status, amount, currency, provider_order_id}'
         },
         {
-          name: 'cancel',
-          signature: 'client.subscriptions.cancel(subscription_id, options)',
-          description: 'Cancel a subscription',
+          name: 'refund',
+          signature: 'client.payments.refund(payment_id, amount=None)',
+          description: 'Refund a payment',
           params: [
-            { name: 'subscription_id', type: 'str', required: true, desc: 'Subscription ID to cancel' },
-            { name: 'cancel_at_cycle_end', type: 'bool', required: false, desc: 'Cancel at end of billing cycle' }
+            { name: 'payment_id', type: 'str', required: true, desc: 'Transaction ID to refund' },
+            { name: 'amount', type: 'int', required: false, desc: 'Refund amount (full refund if not specified)' }
           ],
-          returns: 'Updated subscription object'
+          returns: '{refund_id, status, amount, provider_refund_id}'
+        }
+      ]
+    },
+    email: {
+      title: 'Email',
+      methods: [
+        {
+          name: 'send',
+          signature: 'client.email.send(to, subject, html_body, text_body=None, attachments=None)',
+          description: 'Send an email',
+          params: [
+            { name: 'to', type: 'str', required: true, desc: 'Recipient email address' },
+            { name: 'subject', type: 'str', required: true, desc: 'Email subject' },
+            { name: 'html_body', type: 'str', required: true, desc: 'HTML email content' },
+            { name: 'text_body', type: 'str', required: false, desc: 'Plain text alternative' },
+            { name: 'attachments', type: 'list', required: false, desc: 'Email attachments' }
+          ],
+          returns: '{email_id, status, cost, provider}'
         }
       ]
     }
@@ -379,7 +396,7 @@ function APIReferenceSection() {
       <div>
         <h1 className="text-4xl font-bold text-white mb-4">API Reference</h1>
         <p className="text-xl text-[#888] leading-relaxed">
-          Complete OneRouter SDK API reference with methods, parameters, and examples.
+          Complete OneRouter SDK API reference. All methods return unified responses regardless of provider.
         </p>
       </div>
 
@@ -387,7 +404,7 @@ function APIReferenceSection() {
         <div className="w-64 flex-shrink-0">
           <Card className="bg-[#0a0a0a] border-[#222]">
             <CardContent className="p-4">
-              <h3 className="text-lg font-semibold text-white mb-4">API Methods</h3>
+              <h3 className="text-lg font-semibold text-white mb-4">Services</h3>
               <div className="space-y-2">
                 {Object.entries(methods).map(([key, method]) => (
                   <button
@@ -480,56 +497,50 @@ function ExamplesSection() {
 
       <Card className="bg-[#0a0a0a] border-[#222]">
         <CardContent className="p-6">
-          <h3 className="text-lg font-semibold text-cyan-400 mb-4">E-commerce Checkout</h3>
+          <h3 className="text-lg font-semibold text-cyan-400 mb-4">E-commerce Payment Flow</h3>
           <div className="bg-[#1a1a1a] border border-[#222] rounded p-4">
-            <pre className="text-sm text-cyan-400">{`import onerouter
+            <pre className="text-sm text-cyan-400">{`from onerouter import OneRouter
 
 class PaymentService:
-    def __init__(self, api_key, api_secret):
-        self.client = onerouter.Client(
+    def __init__(self, api_key):
+        self.client = OneRouter(
             api_key=api_key,
-            api_secret=api_secret,
-            environment="live"
+            base_url="https://one-backend.stack-end.com"
         )
 
-    def create_checkout_session(self, cart_items, customer_email):
-        """Create payment order for e-commerce checkout"""
+    def create_checkout(self, cart_items, customer_email, customer_phone):
+        """Create payment order for checkout"""
         total_amount = sum(item['price'] * item['quantity'] for item in cart_items)
 
-        order = self.client.orders.create({
-            "amount": int(total_amount * 100),  # Convert to cents
-            "currency": "USD",
-            "receipt": f"order_{customer_email}_{int(time.time())}",
-            "notes": {
-                "customer_email": customer_email,
-                "items_count": len(cart_items)
+        order = self.client.payments.create(
+            amount=int(total_amount * 100),  # Convert to paise/cents
+            currency="INR",
+            customer_id=customer_email,
+            payment_method={
+                "type": "upi",
+                "upi": {"vpa": f"{customer_phone}@upi"}
             }
-        })
+        )
 
         return {
-            "order_id": order["id"],
-            "payment_url": order["payment_link"],
+            "transaction_id": order["transaction_id"],
+            "checkout_url": order.get("checkout_url"),
             "amount": total_amount
         }
 
-    def verify_payment(self, order_id):
+    def verify_payment(self, transaction_id):
         """Verify payment completion"""
-        order = self.client.orders.get(order_id)
-
-        if order["status"] == "paid":
-            # Payment successful
-            return {"status": "success", "order": order}
-        else:
-            # Payment pending or failed
-            return {"status": "pending", "order": order}
+        payment = self.client.payments.get(transaction_id)
+        return payment["status"] == "completed"
 
 # Usage
-payment_service = PaymentService("your_key", "your_secret")
-checkout = payment_service.create_checkout_session([
-    {"name": "Widget", "price": 29.99, "quantity": 2}
-], "customer@example.com")
-
-print(f"Payment URL: {checkout['payment_url']}")`}
+payment_service = PaymentService("unf_live_your_key")
+checkout = payment_service.create_checkout(
+    cart_items=[{"name": "Widget", "price": 29.99, "quantity": 2}],
+    customer_email="customer@example.com",
+    customer_phone="+919999999999"
+)
+print(f"Payment URL: {checkout['checkout_url']}")`}
           </pre>
           </div>
         </CardContent>
@@ -537,59 +548,28 @@ print(f"Payment URL: {checkout['payment_url']}")`}
 
       <Card className="bg-[#0a0a0a] border-[#222]">
         <CardContent className="p-6">
-          <h3 className="text-lg font-semibold text-cyan-400 mb-4">Subscription Management</h3>
+          <h3 className="text-lg font-semibold text-cyan-400 mb-4">OTP Verification (SMS)</h3>
           <div className="bg-[#1a1a1a] border border-[#222] rounded p-4">
-            <pre className="text-sm text-cyan-400">{`class SubscriptionService:
-    def __init__(self, api_key, api_secret):
-        self.client = onerouter.Client(
-            api_key=api_key,
-            api_secret=api_secret
-        )
+            <pre className="text-sm text-cyan-400">{`from onerouter import OneRouter
+import random
 
-    def create_monthly_subscription(self, customer_id, plan_price):
-        """Create monthly subscription"""
-        subscription = self.client.subscriptions.create({
-            "plan_id": f"monthly_{plan_price}",
-            "customer_id": customer_id,
-            "total_count": 12,  # 1 year
-            "notes": {
-                "billing_cycle": "monthly",
-                "price": plan_price
-            }
-        })
+client = OneRouter(api_key="unf_live_your_key")
 
-        return subscription
-
-    def handle_subscription_webhook(self, webhook_data):
-        """Process subscription webhook events"""
-        event_type = webhook_data["event"]
-
-        if event_type == "subscription.cancelled":
-            subscription_id = webhook_data["data"]["subscription_id"]
-            # Cancel user access, notify customer, etc.
-            self.cancel_user_subscription(subscription_id)
-
-        elif event_type == "subscription.created":
-            # Handle new subscription
-            pass
-
-    def cancel_user_subscription(self, subscription_id, immediate=False):
-        """Cancel subscription"""
-        if immediate:
-            # Cancel immediately
-            self.client.subscriptions.cancel(subscription_id, {
-                "cancel_at_cycle_end": False
-            })
-        else:
-            # Cancel at end of billing cycle
-            self.client.subscriptions.cancel(subscription_id, {
-                "cancel_at_cycle_end": True
-            })
+def send_otp(phone_number):
+    """Send OTP via SMS"""
+    otp = str(random.randint(100000, 999999))
+    
+    sms = client.sms.send(
+        to=phone_number,
+        body=f"Your verification code is {otp}. Valid for 10 minutes.",
+        idempotency_key=f"otp_{phone_number}"
+    )
+    
+    return otp, sms['message_id']
 
 # Usage
-sub_service = SubscriptionService("your_key", "your_secret")
-subscription = sub_service.create_monthly_subscription("cust_123", 29.99)
-print(f"Subscription created: {subscription['id']}")`}
+otp, message_id = send_otp("+919999999999")
+print(f"OTP sent: {otp}, Message ID: {message_id}")`}
           </pre>
           </div>
         </CardContent>
@@ -597,78 +577,60 @@ print(f"Subscription created: {subscription['id']}")`}
 
       <Card className="bg-[#0a0a0a] border-[#222]">
         <CardContent className="p-6">
-          <h3 className="text-lg font-semibold text-cyan-400 mb-4">Webhook Handler</h3>
+          <h3 className="text-lg font-semibold text-cyan-400 mb-4">Transactional Email</h3>
           <div className="bg-[#1a1a1a] border border-[#222] rounded p-4">
-            <pre className="text-sm text-cyan-400">{`from flask import Flask, request, jsonify
-import hmac
-import hashlib
-import onerouter
+            <pre className="text-sm text-cyan-400">{`from onerouter import OneRouter
 
-app = Flask(__name__)
+client = OneRouter(api_key="unf_live_your_key")
 
-# Webhook secret from OneRouter dashboard
-WEBHOOK_SECRET = "your_webhook_secret"
+def send_welcome_email(user_email, user_name):
+    """Send welcome email to new user"""
+    email = client.email.send(
+        to=user_email,
+        subject=f"Welcome to Our Platform, {user_name}!",
+        html_body=f"""
+        <h1>Welcome, {user_name}!</h1>
+        <p>Thanks for joining our platform.</p>
+        <p>We're excited to have you on board!</p>
+        """,
+        text_body=f"Welcome, {user_name}! Thanks for joining our platform."
+    )
+    return email['email_id']
 
-class WebhookHandler:
-    def __init__(self, webhook_secret):
-        self.secret = webhook_secret
-        self.client = onerouter.Client(
-            api_key="your_api_key",
-            api_secret="your_api_secret"
-        )
+# Usage
+email_id = send_welcome_email("user@example.com", "John")
+print(f"Welcome email sent: {email_id}")`}
+          </pre>
+          </div>
+        </CardContent>
+      </Card>
 
-    def verify_signature(self, payload, signature):
-        """Verify webhook signature"""
-        expected_signature = hmac.new(
-            self.secret.encode(),
-            payload,
-            hashlib.sha256
-        ).hexdigest()
+      <Card className="bg-[#0a0a0a] border-[#222]">
+        <CardContent className="p-6">
+          <h3 className="text-lg font-semibold text-cyan-400 mb-4">Async Bulk Operations</h3>
+          <div className="bg-[#1a1a1a] border border-[#222] rounded p-4">
+            <pre className="text-sm text-cyan-400">{`import asyncio
+from onerouter import OneRouter
 
-        return hmac.compare_digest(signature, expected_signature)
+async def send_bulk_sms(phone_numbers, message):
+    """Send SMS to multiple numbers concurrently"""
+    async with OneRouter(api_key="unf_live_xxx") as client:
+        tasks = [
+            client.sms.send_async(to=phone, body=message)
+            for phone in phone_numbers
+        ]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        return results
 
-    def handle_payment_captured(self, data):
-        """Handle successful payment"""
-        payment_id = data["payment_id"]
-        order_id = data["order_id"]
+# Usage
+phones = ["+919999999999", "+919999999998", "+919999999997"]
+results = asyncio.run(send_bulk_sms(phones, "Bulk message from OneRouter!"))
 
-        # Update order status in database
-        # Send confirmation email
-        # Update inventory
-        print(f"Payment captured: {payment_id}")
-
-    def handle_payment_failed(self, data):
-        """Handle failed payment"""
-        payment_id = data["payment_id"]
-
-        # Notify customer
-        # Log failure reason
-        print(f"Payment failed: {payment_id}")
-
-@app.route('/webhooks/onerouter', methods=['POST'])
-def handle_webhook():
-    handler = WebhookHandler(WEBHOOK_SECRET)
-
-    payload = request.get_data()
-    signature = request.headers.get('X-OneRouter-Signature')
-
-    # Verify webhook authenticity
-    if not handler.verify_signature(payload, signature):
-        return jsonify({'error': 'Invalid signature'}), 401
-
-    webhook_data = request.get_json()
-    event_type = webhook_data["event"]
-
-    # Handle different event types
-    if event_type == "payment.captured":
-        handler.handle_payment_captured(webhook_data["data"])
-    elif event_type == "payment.failed":
-        handler.handle_payment_failed(webhook_data["data"])
-
-    return jsonify({'status': 'ok'}), 200
-
-if __name__ == '__main__':
-    app.run(debug=True)`}
+for i, result in enumerate(results):
+    if isinstance(result, Exception):
+        print(f"Failed for {phones[i]}: {result}")
+    else:
+        print(f"Success for {phones[i]}: {result['message_id']}")`}
           </pre>
           </div>
         </CardContent>
@@ -696,31 +658,25 @@ function ErrorHandlingSection() {
             <div className="p-4 bg-[#1a1a1a] rounded border border-red-500/30">
               <h4 className="text-red-400 font-medium mb-2">ValidationError</h4>
               <p className="text-sm text-[#888]">Invalid request parameters or missing required fields.</p>
-               <pre className="text-xs text-red-400 mt-2">Field: &apos;amount&apos;, Message: &apos;Amount must be positive&apos;</pre>
+              <pre className="text-xs text-red-400 mt-2">Field: 'amount', Message: 'Amount must be positive'</pre>
             </div>
 
             <div className="p-4 bg-[#1a1a1a] rounded border border-red-500/30">
               <h4 className="text-red-400 font-medium mb-2">APIError</h4>
-              <p className="text-sm text-[#888]">API returned an error response from the server.</p>
-               <pre className="text-xs text-red-400 mt-2">Code: &apos;INSUFFICIENT_FUNDS&apos;, Message: &apos;Payment failed&apos;</pre>
+              <p className="text-sm text-[#888]">API returned an error response from the provider.</p>
+              <pre className="text-xs text-red-400 mt-2">Code: 'PAYMENT_FAILED', Message: 'Insufficient funds'</pre>
             </div>
 
-            <div className="p-4 bg-[#1a1a1a] rounded border border-red-500/30">
-              <h4 className="text-red-400 font-medium mb-2">AuthenticationError</h4>
-              <p className="text-sm text-[#888]">Invalid API credentials or authentication failed.</p>
-              <pre className="text-xs text-red-400 mt-2">Invalid API key or secret</pre>
+            <div className="p-4 bg-[#1a1a1a] rounded border border-yellow-500/30">
+              <h4 className="text-yellow-400 font-medium mb-2">RateLimitError</h4>
+              <p className="text-sm text-[#888]">API rate limit exceeded.</p>
+              <pre className="text-xs text-yellow-400 mt-2">Retry after: 60 seconds</pre>
             </div>
 
             <div className="p-4 bg-[#1a1a1a] rounded border border-yellow-500/30">
               <h4 className="text-yellow-400 font-medium mb-2">NetworkError</h4>
               <p className="text-sm text-[#888]">Network connectivity issues or timeouts.</p>
               <pre className="text-xs text-yellow-400 mt-2">Connection timeout or DNS resolution failed</pre>
-            </div>
-
-            <div className="p-4 bg-[#1a1a1a] rounded border border-yellow-500/30">
-              <h4 className="text-yellow-400 font-medium mb-2">RateLimitError</h4>
-              <p className="text-sm text-[#888]">API rate limit exceeded.</p>
-              <pre className="text-xs text-yellow-400 mt-2">Too many requests. Retry after 60 seconds</pre>
             </div>
           </div>
         </CardContent>
@@ -730,88 +686,70 @@ function ErrorHandlingSection() {
         <CardContent className="p-6">
           <h3 className="text-lg font-semibold text-cyan-400 mb-4">Comprehensive Error Handling</h3>
           <div className="bg-[#1a1a1a] border border-[#222] rounded p-4">
-            <pre className="text-sm text-cyan-400">{`import onerouter
+            <pre className="text-sm text-cyan-400">{`from onerouter import OneRouter
+from onerouter.exceptions import ValidationError, APIError, RateLimitError, NetworkError
 import time
 import logging
 
 logger = logging.getLogger(__name__)
 
-class PaymentProcessor:
-    def __init__(self, api_key, api_secret):
-        self.client = onerouter.Client(
+class OneRouterClient:
+    def __init__(self, api_key):
+        self.client = OneRouter(
             api_key=api_key,
-            api_secret=api_secret
+            base_url="https://one-backend.stack-end.com",
+            max_retries=3
         )
-        self.max_retries = 3
-        self.retry_delay = 1  # seconds
+        self.retry_delay = 1
 
-    def create_order_with_retry(self, order_data):
-        """Create order with automatic retry logic"""
-        for attempt in range(self.max_retries):
+    def create_payment_with_retry(self, payment_data):
+        """Create payment with automatic retry logic"""
+        for attempt in range(self.client.max_retries + 1):
             try:
-                order = self.client.orders.create(order_data)
-                logger.info(f"Order created successfully: {order['id']}")
-                return order
+                payment = self.client.payments.create(**payment_data)
+                logger.info(f"Payment created: {payment['transaction_id']}")
+                return payment
 
-            except onerouter.RateLimitError as e:
+            except RateLimitError as e:
                 wait_time = e.retry_after or self.retry_delay * (2 ** attempt)
-                logger.warning(f"Rate limited. Waiting {wait_time}s before retry")
+                logger.warning(f"Rate limited. Waiting {wait_time}s")
                 time.sleep(wait_time)
 
-            except onerouter.NetworkError as e:
-                if attempt < self.max_retries - 1:
+            except NetworkError as e:
+                if attempt < self.client.max_retries:
                     wait_time = self.retry_delay * (2 ** attempt)
                     logger.warning(f"Network error. Retrying in {wait_time}s")
                     time.sleep(wait_time)
                 else:
-                    logger.error(f"Network error after {self.max_retries} attempts")
+                    logger.error(f"Network error after {self.client.max_retries} attempts")
                     raise
 
-            except onerouter.ValidationError as e:
-                # Don't retry validation errors
-                logger.error(f"Validation error: {e.field} - {e.description}")
-                raise
+            except ValidationError as e:
+                logger.error(f"Validation error: {e}")
+                raise  # Don't retry validation errors
 
-            except onerouter.APIError as e:
-                # Check if error is retryable
-                if self._is_retryable_error(e.code):
-                    if attempt < self.max_retries - 1:
-                        wait_time = self.retry_delay * (2 ** attempt)
-                        logger.warning(f"API error ({e.code}). Retrying in {wait_time}s")
-                        time.sleep(wait_time)
-                        continue
+            except APIError as e:
+                if attempt < self.client.max_retries:
+                    wait_time = self.retry_delay * (2 ** attempt)
+                    logger.warning(f"API error. Retrying in {wait_time}s")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"API error after retries: {e}")
+                    raise
 
-                logger.error(f"API error: {e.code} - {e.description}")
-                raise
-
-            except Exception as e:
-                logger.error(f"Unexpected error: {type(e).__name__}: {e}")
-                raise
-
-        raise Exception(f"Failed to create order after {self.max_retries} attempts")
-
-    def _is_retryable_error(self, error_code):
-        """Check if error is retryable"""
-        retryable_errors = [
-            'GATEWAY_TIMEOUT',
-            'SERVICE_UNAVAILABLE',
-            'INTERNAL_SERVER_ERROR',
-            'NETWORK_ERROR'
-        ]
-        return error_code in retryable_errors
+        raise Exception(f"Failed after {self.client.max_retries} retries")
 
 # Usage
-processor = PaymentProcessor("your_key", "your_secret")
-
+client = OneRouterClient("unf_live_your_key")
 try:
-    order = processor.create_order_with_retry({
+    payment = client.create_payment_with_retry({
         "amount": 1000,
-        "currency": "USD",
-        "receipt": "order_123"
+        "currency": "INR",
+        "customer_id": "cust_123"
     })
-    print(f"Order created: {order['id']}")
+    print(f"Payment created: {payment['transaction_id']}")
 except Exception as e:
-    print(f"Failed to create order: {e}")`}
+    print(f"Failed: {e}")`}
           </pre>
           </div>
         </CardContent>
@@ -832,7 +770,15 @@ except Exception as e:
             <div className="flex items-start gap-3">
               <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
               <div>
-                <h4 className="text-white font-medium">Log Errors Appropriately</h4>
+                <h4 className="text-white font-medium">Use Idempotency Keys</h4>
+                <p className="text-sm text-[#888]">Prevent duplicate transactions by using idempotency keys for critical operations.</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-white font-medium">Log Errors with Context</h4>
                 <p className="text-sm text-[#888]">Log errors with sufficient context for debugging while avoiding sensitive data.</p>
               </div>
             </div>
@@ -840,16 +786,8 @@ except Exception as e:
             <div className="flex items-start gap-3">
               <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
               <div>
-                <h4 className="text-white font-medium">Handle Idempotency</h4>
-                <p className="text-sm text-[#888]">Use idempotency keys for operations that might be retried.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
-              <div>
                 <h4 className="text-white font-medium">Monitor API Health</h4>
-                <p className="text-sm text-[#888]">Implement health checks and monitoring for API availability.</p>
+                <p className="text-sm text-[#888]">Implement health checks and monitor API availability in your dashboard.</p>
               </div>
             </div>
           </div>
