@@ -1288,7 +1288,7 @@ curl -H "X-API-Key: unf_live_your_api_key_here" \
             <h4 className="text-white font-medium mb-2">Get SMS Status</h4>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-blue-400 font-mono">GET</span>
-              <code className="text-white">/v1/sms/{message_id}</code>
+              <code className="text-white">{`/v1/sms/{message_id}`}</code>
             </div>
             <div className="border border-gray-700 rounded p-4 bg-gray-900">
               <pre className="text-white text-sm overflow-x-auto">
@@ -1339,7 +1339,7 @@ curl -H "X-API-Key: unf_live_your_api_key_here" \
             <h4 className="text-white font-medium mb-2">Get Payment</h4>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-blue-400 font-mono">GET</span>
-              <code className="text-white">/v1/payments/{transaction_id}</code>
+              <code className="text-white">{`/v1/payments/{transaction_id}`}</code>
             </div>
           </div>
 
@@ -1347,7 +1347,7 @@ curl -H "X-API-Key: unf_live_your_api_key_here" \
             <h4 className="text-white font-medium mb-2">Refund Payment</h4>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-green-400 font-mono">POST</span>
-              <code className="text-white">/v1/payments/{transaction_id}/refund</code>
+              <code className="text-white">{`/v1/payments/{transaction_id}/refund`}</code>
             </div>
           </div>
         </div>

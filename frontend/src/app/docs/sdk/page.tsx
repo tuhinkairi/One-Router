@@ -172,7 +172,7 @@ function InstallationSection() {
           <div>
             <h3 className="text-lg font-semibold text-cyan-400 mb-3">Verify Installation</h3>
             <div className="bg-[#1a1a1a] border border-[#222] rounded p-4">
-              <pre className="text-sm text-cyan-400">python -c "import onerouter; print('OneRouter SDK installed successfully!')"</pre>
+              <pre className="text-sm text-cyan-400">python -c &quot;import onerouter; print(&apos;OneRouter SDK installed successfully!&apos;)&quot;</pre>
             </div>
           </div>
 
@@ -261,7 +261,7 @@ print(f"Payment created: {payment['transaction_id']}")`}
             <div>
               <h3 className="text-lg font-semibold text-green-400 mb-2">Success!</h3>
               <p className="text-[#888]">
-                You've made your first API call with OneRouter. Your credentials are encrypted and stored securely.
+                You&apos;ve made your first API call with OneRouter. Your credentials are encrypted and stored securely.
                 The API routes to your provider accounts (Razorpay, Twilio, etc.) using your configured credentials.
               </p>
             </div>
@@ -276,27 +276,28 @@ print(f"Payment created: {payment['transaction_id']}")`}
             <div>
               <h4 className="text-white font-medium mb-2">Using Environment Variables</h4>
               <div className="bg-[#1a1a1a] border border-[#222] rounded p-4">
-                <pre className="text-sm text-cyan-400">{`# .env file
-ONEROUTER_API_KEY=unf_live_your_key_here
-ONEROUTER_BASE_URL=https://one-backend.stack-end.com
-ONEROUTER_TIMEOUT=30
-ONEROUTER_MAX_RETRIES=3`}
+                <pre className="text-sm text-cyan-400">
+                {`# .env file
+                    ONEROUTER_API_KEY=unf_live_your_key_here
+                    ONEROUTER_BASE_URL=https://one-backend.stack-end.com
+                    ONEROUTER_TIMEOUT=30
+                    ONEROUTER_MAX_RETRIES=3`}
                 </pre>
               </div>
             </div>
             <div>
               <h4 className="text-white font-medium mb-2">Python Code</h4>
               <div className="bg-[#1a1a1a] border border-[#222] rounded p-4">
-                <pre className="text-sm text-cyan-400">{`import os
-from onerouter import OneRouter
-
-client = OneRouter(
-    api_key=os.getenv("ONEROUTER_API_KEY"),
-    base_url=os.getenv("ONEROUTER_BASE_URL", "https://one-backend.stack-end.com"),
-    timeout=int(os.getenv("ONEROUTER_TIMEOUT", "30")),
-    max_retries=int(os.getenv("ONEROUTER_MAX_RETRIES", "3"))
-)`}
+                <pre className="text-sm text-cyan-400">
+                  {`import os from onerouter import OneRouter
+                    client = OneRouter(
+                        api_key=os.getenv("ONEROUTER_API_KEY"),
+                        base_url=os.getenv("ONEROUTER_BASE_URL", "https://one-backend.stack-end.com"),
+                        timeout=int(os.getenv("ONEROUTER_TIMEOUT", "30")),
+                        max_retries=int(os.getenv("ONEROUTER_MAX_RETRIES", "3"))
+                    )`}
               </pre>
+            </div>
             </div>
           </div>
         </CardContent>
@@ -658,13 +659,13 @@ function ErrorHandlingSection() {
             <div className="p-4 bg-[#1a1a1a] rounded border border-red-500/30">
               <h4 className="text-red-400 font-medium mb-2">ValidationError</h4>
               <p className="text-sm text-[#888]">Invalid request parameters or missing required fields.</p>
-              <pre className="text-xs text-red-400 mt-2">Field: 'amount', Message: 'Amount must be positive'</pre>
+              <pre className="text-xs text-red-400 mt-2">Field: &apos;amount&apos;, Message: &apos;Amount must be positive&apos;</pre>
             </div>
 
             <div className="p-4 bg-[#1a1a1a] rounded border border-red-500/30">
               <h4 className="text-red-400 font-medium mb-2">APIError</h4>
               <p className="text-sm text-[#888]">API returned an error response from the provider.</p>
-              <pre className="text-xs text-red-400 mt-2">Code: 'PAYMENT_FAILED', Message: 'Insufficient funds'</pre>
+              <pre className="text-xs text-red-400 mt-2">Code: &apos;PAYMENT_FAILED&apos;, Message: &apos;Insufficient funds&apos;</pre>
             </div>
 
             <div className="p-4 bg-[#1a1a1a] rounded border border-yellow-500/30">
