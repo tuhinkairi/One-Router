@@ -31,26 +31,28 @@ export default function SDKDocsPage() {
       {/* Header */}
       <header className="border-b border-[#222]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Link href="/" className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4">
+            <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto overflow-x-auto">
+              <Link href="/" className="flex items-center gap-2 flex-shrink-0">
                 <div className="w-8 h-8 bg-gradient-to-br from-black to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg">
                   <span className="text-white font-mono text-sm font-bold">OR</span>
                 </div>
-                <span className="font-bold text-lg font-mono text-white">OneRouter</span>
+                <span className="font-bold text-lg font-mono text-white hidden sm:block">OneRouter</span>
               </Link>
-              <span className="text-[#888]">/</span>
-              <Link href="/docs" className="text-[#888] hover:text-cyan-400">docs</Link>
-              <span className="text-[#888]">/</span>
-              <span className="text-cyan-400">sdk</span>
+              <span className="text-[#888] hidden sm:block">/</span>
+              <Link href="/docs" className="text-[#888] hover:text-cyan-400 text-sm flex-shrink-0">
+                docs
+              </Link>
+              <span className="text-[#888] hidden sm:block">/</span>
+              <span className="text-cyan-400 text-sm flex-shrink-0">sdk</span>
             </div>
 
-            <div className="flex items-center gap-4">
-              <Link href="https://github.com/onerouter/sdk-python" target="_blank" className="text-[#888] hover:text-white">
+            <div className="flex items-center gap-4 w-full sm:w-auto justify-end">
+              <Link href="https://github.com/onerouter/sdk-python" target="_blank" className="text-[#888] hover:text-white p-2">
                 <Github className="w-5 h-5" />
               </Link>
-              <Link href="/docs">
-                <Button variant="outline" className="border-[#222] text-white hover:border-cyan-500">
+              <Link href="/docs" className="flex-shrink-0">
+                <Button variant="outline" className="border-[#222] text-white hover:border-cyan-500 whitespace-nowrap text-sm">
                   ← Back to Docs
                 </Button>
               </Link>
@@ -60,9 +62,9 @@ export default function SDKDocsPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex gap-8">
-          {/* Sidebar */}
-          <aside className="w-64 flex-shrink-0">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Sidebar - Hidden on mobile */}
+          <aside className="hidden lg:block w-64 flex-shrink-0">
             <nav className="sticky top-24">
               <div className="bg-[#1a1a1a] border border-[#222] rounded-lg p-4">
                 <h3 className="text-lg font-semibold text-white mb-4">SDK Documentation</h3>
@@ -96,7 +98,7 @@ export default function SDKDocsPage() {
                     Generate API Keys →
                   </Link>
                   <span className="block text-[#888] text-sm">
-                    Backend: one-backend.stack-end.com
+                    Backend URL: Use environment variable
                   </span>
                 </div>
               </div>
@@ -118,8 +120,27 @@ export default function SDKDocsPage() {
             </nav>
           </aside>
 
+          {/* Mobile Tab Navigation */}
+          <div className="lg:hidden mb-4">
+            <div className="flex overflow-x-auto gap-2 pb-2">
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex-shrink-0 px-4 py-2 rounded-full text-sm transition-colors ${
+                    activeTab === tab.id
+                      ? 'bg-cyan-500 text-white'
+                      : 'bg-gray-800 text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {tab.title}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Main Content */}
-          <main className="flex-1">
+          <main className="flex-1 w-full">
             {activeTab === 'installation' && <InstallationSection />}
             {activeTab === 'quickstart' && <QuickStartSection />}
             {activeTab === 'api-reference' && <APIReferenceSection />}
@@ -204,7 +225,8 @@ function InstallationSection() {
                 <h4 className="text-white font-medium">Production</h4>
                 <Badge className="bg-green-500/20 text-green-400">Live</Badge>
               </div>
-              <code className="text-sm text-white">https://one-backend.stack-end.com</code>
+              <code className="text-sm text-white">https://api.yourdomain.com</code>
+              <p className="text-[#666] text-xs mt-2">Replace with your actual production URL</p>
             </div>
           </div>
         </CardContent>
@@ -230,9 +252,10 @@ function QuickStartSection() {
             <pre className="text-sm text-cyan-400">{`from onerouter import OneRouter
 
 # Initialize with your API key
+import os
 client = OneRouter(
     api_key="unf_live_your_api_key_here",
-    base_url="https://one-backend.stack-end.com"
+    base_url=os.getenv("ONEROUTER_BASE_URL", "http://localhost:8000")
 )
 
 # Send SMS
@@ -240,15 +263,7 @@ sms = client.sms.send(
     to="+1234567890",
     body="Hello from OneRouter!"
 )
-print(f"SMS sent: {sms['message_id']}")
-
-# Create Payment
-payment = client.payments.create(
-    amount=1000,  # ₹10.00
-    currency="INR",
-    customer_id="cust_123"
-)
-print(f"Payment created: {payment['transaction_id']}")`}
+print(f"SMS sent: {sms['message_id']}")`}
           </pre>
           </div>
         </CardContent>
@@ -279,7 +294,7 @@ print(f"Payment created: {payment['transaction_id']}")`}
                 <pre className="text-sm text-cyan-400">
                 {`# .env file
                     ONEROUTER_API_KEY=unf_live_your_key_here
-                    ONEROUTER_BASE_URL=https://one-backend.stack-end.com
+                    ONEROUTER_BASE_URL=http://localhost:8000
                     ONEROUTER_TIMEOUT=30
                     ONEROUTER_MAX_RETRIES=3`}
                 </pre>
@@ -292,7 +307,7 @@ print(f"Payment created: {payment['transaction_id']}")`}
                   {`import os from onerouter import OneRouter
                     client = OneRouter(
                         api_key=os.getenv("ONEROUTER_API_KEY"),
-                        base_url=os.getenv("ONEROUTER_BASE_URL", "https://one-backend.stack-end.com"),
+                        base_url=os.getenv("ONEROUTER_BASE_URL", "http://localhost:8000"),
                         timeout=int(os.getenv("ONEROUTER_TIMEOUT", "30")),
                         max_retries=int(os.getenv("ONEROUTER_MAX_RETRIES", "3"))
                     )`}
@@ -395,14 +410,15 @@ function APIReferenceSection() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-bold text-white mb-4">API Reference</h1>
-        <p className="text-xl text-[#888] leading-relaxed">
+        <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">API Reference</h1>
+        <p className="text-lg sm:text-xl text-[#888] leading-relaxed">
           Complete OneRouter SDK API reference. All methods return unified responses regardless of provider.
         </p>
       </div>
 
-      <div className="flex gap-6">
-        <div className="w-64 flex-shrink-0">
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Method Sidebar - Hidden on mobile */}
+        <div className="hidden lg:block w-64 flex-shrink-0">
           <Card className="bg-[#0a0a0a] border-[#222]">
             <CardContent className="p-4">
               <h3 className="text-lg font-semibold text-white mb-4">Services</h3>
@@ -425,10 +441,30 @@ function APIReferenceSection() {
           </Card>
         </div>
 
-        <div className="flex-1">
+        {/* Mobile Method Selector */}
+        <div className="lg:hidden mb-4">
+          <div className="flex overflow-x-auto gap-2 pb-2">
+            {Object.entries(methods).map(([key, method]) => (
+              <button
+                key={key}
+                onClick={() => setActiveMethod(key)}
+                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm transition-colors ${
+                  activeMethod === key
+                    ? 'bg-cyan-500 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:text-white'
+                }`}
+              >
+                {method.title}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Method Details */}
+        <div className="flex-1 w-full">
           <Card className="bg-[#0a0a0a] border-[#222]">
             <CardHeader>
-              <CardTitle className="text-white">
+              <CardTitle className="text-white text-xl sm:text-2xl">
                 {methods[activeMethod as keyof typeof methods].title} API
               </CardTitle>
             </CardHeader>
@@ -437,7 +473,7 @@ function APIReferenceSection() {
                 <div key={index} className="border border-[#222] rounded-lg p-4">
                   <div className="mb-4">
                     <h4 className="text-white font-medium mb-2">client.{activeMethod}.{method.name}</h4>
-                    <code className="text-cyan-400 text-sm">{method.signature}</code>
+                    <code className="text-cyan-400 text-sm block sm:inline">{method.signature}</code>
                   </div>
 
                   <p className="text-[#888] mb-4">{method.description}</p>
@@ -501,12 +537,13 @@ function ExamplesSection() {
           <h3 className="text-lg font-semibold text-cyan-400 mb-4">E-commerce Payment Flow</h3>
           <div className="bg-[#1a1a1a] border border-[#222] rounded p-4">
             <pre className="text-sm text-cyan-400">{`from onerouter import OneRouter
+import os
 
 class PaymentService:
     def __init__(self, api_key):
         self.client = OneRouter(
             api_key=api_key,
-            base_url="https://one-backend.stack-end.com"
+            base_url=os.getenv("ONEROUTER_BASE_URL", "http://localhost:8000")
         )
 
     def create_checkout(self, cart_items, customer_email, customer_phone):
@@ -691,6 +728,7 @@ function ErrorHandlingSection() {
 from onerouter.exceptions import ValidationError, APIError, RateLimitError, NetworkError
 import time
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -698,7 +736,7 @@ class OneRouterClient:
     def __init__(self, api_key):
         self.client = OneRouter(
             api_key=api_key,
-            base_url="https://one-backend.stack-end.com",
+            base_url=os.getenv("ONEROUTER_BASE_URL", "http://localhost:8000"),
             max_retries=3
         )
         self.retry_delay = 1
