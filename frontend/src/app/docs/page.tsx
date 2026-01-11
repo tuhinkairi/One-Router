@@ -6,6 +6,11 @@ import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Github } from 'lucide-react';
 
+/**
+ * Render the main documentation page with a sticky header, responsive navigation, a sidebar (desktop), a mobile section selector, and the content area for selectable documentation sections.
+ *
+ * @returns The JSX element for the DocsPage layout containing navigation, section controls, and the active documentation section's content.
+ */
 export default function DocsPage() {
   const [activeSection, setActiveSection] = useState('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -234,7 +239,11 @@ export default function DocsPage() {
   );
 }
 
-// Overview Section
+/**
+ * Renders the Overview documentation section describing OneRouter's purpose, key features, supported services, quickstart links, and pricing.
+ *
+ * @returns The React element for the Overview section of the docs page.
+ */
 function OverviewSection() {
   return (
     <div className="space-y-12">
@@ -414,7 +423,11 @@ function OverviewSection() {
   );
 }
 
-// Quick Start Section
+/**
+ * Renders the Quick Start documentation section with five onboarding steps, provider credential guidance, SDK install commands, and example usage for Python and JavaScript.
+ *
+ * @returns A React element containing the Quick Start content (steps, notes, code examples, and links) for the docs page.
+ */
 function QuickStartSection() {
   return (
     <div className="space-y-8">
@@ -557,7 +570,15 @@ console.log('Payment created:', payment.transactionId);`}
   );
 }
 
-// SDK Section
+/**
+ * Renders the Python SDK documentation section used on the docs page.
+ *
+ * Provides installation instructions, base URL guidance, full SDK setup examples,
+ * framework integration snippets (Flask, FastAPI, Django), and advanced usage
+ * patterns such as idempotency, bulk operations, and error handling.
+ *
+ * @returns The JSX element representing the Python SDK documentation section.
+ */
 function SDKSection() {
   return (
     <div className="space-y-8">
@@ -814,7 +835,14 @@ except Exception as e:
   );
 }
 
-// JavaScript SDK Section
+/**
+ * Renders the JavaScript SDK documentation section for the docs page.
+ *
+ * Includes installation commands, base URL guidance, a complete SDK setup example,
+ * and usage examples for sending SMS, creating payments, and sending email.
+ *
+ * @returns The JSX element for the JavaScript SDK documentation section.
+ */
 function JSSDKSection() {
   return (
     <div className="space-y-8">
@@ -968,7 +996,12 @@ console.log('Email ID:', email.emailId);`}
   );
 }
 
-// SMS Section
+/**
+ * Renders the SMS Integration documentation section with prerequisites, sample usage for sending SMS,
+ * advanced options (custom from number, idempotency), delivery status retrieval, and pricing notes.
+ *
+ * @returns The JSX element for the SMS documentation section
+ */
 function SMSSection() {
   return (
     <div className="space-y-8">
@@ -1064,7 +1097,14 @@ print("Delivered at:", status.get('delivered_at'))`}
   );
 }
 
-// Email Section
+/**
+ * Renders the Email Integration documentation section for OneRouter.
+ *
+ * This section presents prerequisites, examples for sending emails (including attachments and reply-to),
+ * instructions for retrieving email status, and pricing notes related to Resend integration.
+ *
+ * @returns A JSX element containing the email integration documentation UI.
+ */
 function EmailSection() {
   return (
     <div className="space-y-8">
@@ -1165,7 +1205,14 @@ print("Opened at:", status.get('opened_at'))`}
   );
 }
 
-// Payments Section
+/**
+ * Renders the Payments documentation section for the docs page.
+ *
+ * Includes supported payment methods (India and international), feature list (subscriptions, refunds, multi-currency),
+ * example usage for creating UPI and card payments, payment operations (get status, refund), and pricing notes.
+ *
+ * @returns A React element containing the payments documentation UI
+ */
 function PaymentsSection() {
   return (
     <div className="space-y-8">
@@ -1289,7 +1336,14 @@ print("Status:", status['status'])`}
   );
 }
 
-// API Section
+/**
+ * Renders the REST API reference section of the documentation page.
+ *
+ * Provides base URLs, authentication examples, SMS/Payment/Email endpoint examples,
+ * common error response samples, rate limit information, and a link to the interactive Swagger UI.
+ *
+ * @returns A JSX element containing the API reference content for display in the docs page.
+ */
 function APISection() {
   return (
     <div className="space-y-8">
@@ -1537,7 +1591,14 @@ curl -H "X-API-Key: unf_live_your_api_key_here" \
   );
 }
 
-// Management API Section
+/**
+ * Render the Management API documentation section showing available management endpoints and authentication details.
+ *
+ * This component displays grouped cards for API Keys Management, Connected Services Management, Environment Management,
+ * Onboarding, and an authentication example required to call the management endpoints.
+ *
+ * @returns A React element containing the Management API documentation UI.
+ */
 function ManagementAPISection() {
   return (
     <div className="space-y-8">
@@ -1706,7 +1767,11 @@ function ManagementAPISection() {
   );
 }
 
-// Troubleshooting Section
+/**
+ * Renders the Troubleshooting documentation section with common issues, debugging tips, and support resources.
+ *
+ * @returns A JSX element containing troubleshooting content: common issues and their checks, debugging tips (including example debug logging and mode guidance), and links to additional help resources.
+ */
 function TroubleshootingSection() {
   return (
     <div className="space-y-8">
