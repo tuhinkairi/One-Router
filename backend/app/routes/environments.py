@@ -15,7 +15,7 @@ from ..models import ServiceCredential, User
 router = APIRouter()
 
 
-@router.get("/api/services/{service_name}/environments")
+@router.get("/{service_name}/environments")
 async def get_service_environments(
     service_name: str,
     user=Depends(get_current_user),
@@ -59,7 +59,7 @@ async def get_service_environments(
         raise HTTPException(status_code=500, detail=f"Failed to get environment status: {str(e)}")
 
 
-@router.post("/api/services/{service_name}/switch-environment")
+@router.post("/{service_name}/switch-environment")
 async def switch_environment(
     service_name: str,
     body: Dict[str, str] = Body(...),
@@ -150,7 +150,7 @@ async def switch_environment(
         raise HTTPException(status_code=500, detail=f"Failed to switch environment: {str(e)}")
 
 
-@router.get("/api/debug/service-environments")
+@router.get("/debug/service-environments")
 async def debug_service_environments(
     user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -184,7 +184,7 @@ async def debug_service_environments(
     except Exception as e:
         return {"error": str(e)}
 
-@router.get("/api/user/environment-preferences")
+@router.get("/user/environment-preferences")
 async def get_environment_preferences(
     user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db)

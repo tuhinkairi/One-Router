@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, Eye, EyeOff, Save, X } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Save, X, Trash2, AlertTriangle } from 'lucide-react';
 import { useClientApiCall } from '@/lib/api-client';
 
 interface ServiceCredentials {
@@ -21,15 +21,19 @@ interface EditServiceModalProps {
     features: Record<string, boolean>;
   };
   trigger: React.ReactNode;
+  onDelete?: () => void;
 }
 
-export function EditServiceModal({ service, trigger }: EditServiceModalProps) {
+export function EditServiceModal({ service, trigger, onDelete }: EditServiceModalProps) {
   const [open, setOpen] = useState(false);
   const [credentials, setCredentials] = useState<ServiceCredentials>({});
   const [visibleFields, setVisibleFields] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [deleteMode, setDeleteMode] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const apiClient = useClientApiCall();
 
@@ -91,12 +95,38 @@ export function EditServiceModal({ service, trigger }: EditServiceModalProps) {
     }
   };
 
+  const handleDelete = async () => {
+    setDeleteLoading(true);
+    setDeleteError(null);
+
+    try {
+      await apiClient(`/api/services/${service.service_name}`, {
+        method: 'DELETE'
+      });
+
+      // Close modal and notify parent
+      setOpen(false);
+      if (typeof onDelete === 'function') {
+        onDelete();
+      } else {
+        window.location.reload();
+      }
+
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to disconnect service');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const handleClose = () => {
     setOpen(false);
     setCredentials({});
     setError(null);
     setSuccess(false);
     setVisibleFields(new Set());
+    setDeleteMode(false);
+    setDeleteError(null);
   };
 
   return (
@@ -176,39 +206,98 @@ export function EditServiceModal({ service, trigger }: EditServiceModalProps) {
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex gap-3 pt-4">
-            <Button
-              onClick={handleClose}
-              variant="outline"
-              className="flex-1 bg-transparent border-[#333] text-[#888] hover:border-red-500 hover:text-red-400"
-            >
-              <X className="w-4 h-4 mr-2" />
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={loading || success}
-              className="flex-1 bg-cyan-500 text-white hover:bg-cyan-600 disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
-                  Saving...
-                </>
-              ) : success ? (
-                <>
-                  <div className="w-4 h-4 bg-green-500 rounded-full mr-2"></div>
-                  Saved!
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Save Changes
-                </>
+          {/* Delete Confirmation Mode */}
+          {deleteMode ? (
+            <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-lg">
+              <div className="flex items-center gap-3 mb-4">
+                <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-red-400">Disconnect {service.service_name}?</p>
+                  <p className="text-xs text-[#888] mt-1">
+                    This will remove {service.service_name} from your connected services. 
+                    You can reconnect anytime.
+                  </p>
+                </div>
+              </div>
+
+              {deleteError && (
+                <div className="bg-red-500/20 border border-red-500/30 p-3 rounded-lg flex items-center gap-2 mb-4">
+                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                  <p className="text-sm text-red-400">{deleteError}</p>
+                </div>
               )}
-            </Button>
-          </div>
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setDeleteMode(false)}
+                  variant="outline"
+                  disabled={deleteLoading}
+                  className="flex-1 bg-transparent border-[#333] text-[#888] hover:text-white"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleDelete}
+                  disabled={deleteLoading}
+                  className="flex-1 bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
+                >
+                  {deleteLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                      Disconnecting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Disconnect
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            /* Normal Action Buttons */
+            <div className="flex gap-3 pt-4">
+              <Button
+                onClick={handleClose}
+                variant="outline"
+                className="flex-1 bg-transparent border-[#333] text-[#888] hover:text-white"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Cancel
+              </Button>
+              <Button
+                onClick={() => setDeleteMode(true)}
+                variant="outline"
+                className="flex-1 bg-transparent border-[#333] text-[#888] hover:border-red-500 hover:text-red-400"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Disconnect
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={loading || success}
+                className="flex-1 bg-cyan-500 text-white hover:bg-cyan-600 disabled:opacity-50"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                    Saving...
+                  </>
+                ) : success ? (
+                  <>
+                    <div className="w-4 h-4 bg-green-500 rounded-full mr-2"></div>
+                    Saved!
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

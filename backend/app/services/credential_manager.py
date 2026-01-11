@@ -79,7 +79,7 @@ class CredentialManager:
 
         return combined
 
-    def decrypt_credentials(self, encrypted_data: bytes) -> Dict[str, Any]:
+    def decrypt_credentials(self, encrypted_data: bytes | bytearray | memoryview | str) -> Dict[str, Any]:
         """Decrypt credentials using AES256-GCM"""
         try:
             combined = encrypted_data

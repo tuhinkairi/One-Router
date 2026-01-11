@@ -187,6 +187,142 @@ async def update_service_credentials(
         raise HTTPException(status_code=500, detail=f"Failed to update credentials: {str(e)}")
 
 
+@router.delete("/services/{service_name}")
+async def delete_service_credentials(
+    service_name: str,
+    user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Delete/disconnect a service by soft-deleting its credentials.
+    
+    This removes the service from the connected services section in the dashboard.
+    The credential record is kept in the database but marked as inactive (is_active=False).
+    
+    Args:
+        service_name: Name of the service to delete (e.g., "razorpay", "paypal")
+    
+    Returns:
+        {
+            "status": "deleted",
+            "service_name": "razorpay",
+            "message": "Service disconnected successfully"
+        }
+    """
+    try:
+        user_id = str(user.get("id"))
+
+        # Find the existing credential for this service and user
+        result = await db.execute(
+            select(ServiceCredential).where(
+                ServiceCredential.user_id == user_id,
+                ServiceCredential.provider_name == service_name,
+                ServiceCredential.is_active == True
+            )
+        )
+        credential = result.scalar_one_or_none()
+
+        if not credential:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"No active credentials found for {service_name}. The service may already be disconnected."
+            )
+
+        # Soft delete by setting is_active to False
+        await db.execute(
+            update(ServiceCredential).where(
+                ServiceCredential.id == credential.id
+            ).values(
+                is_active=False,
+                updated_at=datetime.utcnow()
+            )
+        )
+
+        await db.commit()
+
+        return {
+            "status": "deleted",
+            "service_name": service_name,
+            "message": f"{service_name} has been disconnected successfully"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        print(f"Error deleting service {service_name}: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to disconnect service: {str(e)}"
+        )
+
+
+@router.delete("/services")
+async def delete_all_services(
+    user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Delete/disconnect ALL services for the current user.
+    
+    This removes all services from the connected services section in the dashboard.
+    All credential records are kept in the database but marked as inactive.
+    
+    Returns:
+        {
+            "status": "deleted",
+            "count": 5,
+            "message": "All services have been disconnected successfully"
+        }
+    """
+    try:
+        user_id = str(user.get("id"))
+
+        # Find all active credentials for this user
+        result = await db.execute(
+            select(ServiceCredential).where(
+                ServiceCredential.user_id == user_id,
+                ServiceCredential.is_active == True
+            )
+        )
+        credentials = result.scalars().all()
+
+        if not credentials:
+            return {
+                "status": "deleted",
+                "count": 0,
+                "message": "No active services to disconnect"
+            }
+
+        # Soft delete all credentials
+        update_result = await db.execute(
+            update(ServiceCredential).where(
+                ServiceCredential.user_id == user_id,
+                ServiceCredential.is_active == True
+            ).values(
+                is_active=False,
+                updated_at=datetime.utcnow()
+            )
+        )
+
+        deleted_count = update_result.rowcount
+        await db.commit()
+
+        return {
+            "status": "deleted",
+            "count": deleted_count,
+            "message": f"All {deleted_count} services have been disconnected successfully"
+        }
+
+    except Exception as e:
+        await db.rollback()
+        print(f"Error deleting all services: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to disconnect services: {str(e)}"
+        )
+
+
 class SwitchAllEnvironmentsRequest(BaseModel):
     """Request to atomically switch all services to a target environment"""
     environment: str
