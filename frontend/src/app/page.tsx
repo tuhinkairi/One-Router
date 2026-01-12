@@ -12,6 +12,7 @@ export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
+  
     <div className="min-h-screen bg-black text-white">
         {/* Modern Navbar */}
         <header className="sticky top-0 z-50 bg-black border-b border-[#222]">
