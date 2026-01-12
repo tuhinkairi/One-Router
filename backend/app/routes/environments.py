@@ -22,7 +22,18 @@ async def get_service_environments(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Get environment status for a service (test/live credentials)
+    Retrieve configuration status and last-used timestamps for a service's test and live environments for the current user.
+    
+    Parameters:
+    	service_name (str): The provider/service name to inspect.
+    
+    Returns:
+    	environments (dict): Mapping with keys "test" and "live". Each value is a dict with:
+    		- configured (bool): True if credentials exist for that environment.
+    		- last_used (str | None): ISO 8601 timestamp of the credential's last update, or None.
+    
+    Raises:
+    	HTTPException: If querying the database or building the environment status fails.
     """
     try:
         user_id = str(user.get("id"))
@@ -67,14 +78,16 @@ async def switch_environment(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Switch active environment for a service
-
-    Updates user preferences to use the specified environment for this service
+    Switch the active environment ("test" or "live") for the named service and persist that choice to the user's preferences.
     
-    Body:
-        {
-            "environment": "test" or "live"
-        }
+    Parameters:
+        body (Dict[str, str]): Request body containing the key "environment" with value "test" or "live".
+    
+    Returns:
+        dict: A payload with keys "status", "service", "environment", and "message" describing the outcome.
+    
+    Raises:
+        HTTPException: If the environment value is invalid, no active credential exists for the service, or an internal error occurs.
     """
     try:
         print(f"Switch environment request: service={service_name}, body={body}")
@@ -190,15 +203,14 @@ async def get_environment_preferences(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Get user's environment preferences for all services
-
+    Retrieve the current user's environment preferences across services.
+    
     Returns:
-    {
-      "environments": {
-        "razorpay": "test",
-        "paypal": "live"
-      }
-    }
+        A dictionary with an "environments" key mapping service names (e.g., "razorpay") to their selected environment ("test" or "live").
+    
+    Raises:
+        HTTPException: 404 if the user record is not found.
+        HTTPException: 500 if preferences cannot be retrieved due to an internal error.
     """
     try:
         user_id = str(user.get("id"))
