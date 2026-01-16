@@ -24,6 +24,16 @@ interface EditServiceModalProps {
   onDelete?: () => void;
 }
 
+/**
+ * Renders a modal UI for viewing and managing a service's credentials and connection.
+ *
+ * The modal lets users enter or update provider-specific credential fields, toggle visibility of each field, save changes to the server, and disconnect the service via a delete flow that requires confirmation. It displays validation, loading, success, and error states and optionally notifies a parent component after a successful disconnect.
+ *
+ * @param service - The service object containing `id`, `service_name`, `environment`, and `features` used to determine displayed fields and context.
+ * @param trigger - A React node that acts as the modal trigger (rendered as the DialogTrigger child).
+ * @param onDelete - Optional callback invoked after a successful disconnect; if not provided the page will reload.
+ * @returns The modal component that manages editing and disconnecting the specified service.
+ */
 export function EditServiceModal({ service, trigger, onDelete }: EditServiceModalProps) {
   const [open, setOpen] = useState(false);
   const [credentials, setCredentials] = useState<ServiceCredentials>({});

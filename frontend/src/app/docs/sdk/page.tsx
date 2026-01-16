@@ -15,6 +15,14 @@ import {
 import Link from 'next/link';
 import { useState } from 'react';
 
+/**
+ * Render the SDK documentation page with a responsive layout, sidebar (desktop), and mobile tab navigation.
+ *
+ * The component manages an internal active-tab state to switch between five content sections: Installation, Quick Start,
+ * API Reference, Examples, and Error Handling. It also includes header navigation, quick links, and pricing summary.
+ *
+ * @returns The React element for the SDK documentation UI.
+ */
 export default function SDKDocsPage() {
   const [activeTab, setActiveTab] = useState('installation');
 
@@ -153,6 +161,14 @@ export default function SDKDocsPage() {
   );
 }
 
+/**
+ * Render the "SDK Installation" documentation section with installation commands and backend URLs.
+ *
+ * Renders cards for the Python SDK (installation commands for standard and async variants, requirements, and a verification command),
+ * a JavaScript SDK install snippet, and development/production backend URL blocks with environment guidance.
+ *
+ * @returns A React element containing the installation instructions and backend URL cards for the SDK documentation page.
+ */
 function InstallationSection() {
   return (
     <div className="space-y-8">
@@ -235,6 +251,14 @@ function InstallationSection() {
   );
 }
 
+/**
+ * Render the Quick Start documentation section for the OneRouter SDK.
+ *
+ * Displays a Basic Setup card with a Python example, a Success card confirming a completed API call,
+ * and an Environment Configuration card showing a sample .env and Python initialization snippet.
+ *
+ * @returns A JSX element containing the Quick Start content for the documentation page.
+ */
 function QuickStartSection() {
   return (
     <div className="space-y-8">
@@ -321,6 +345,14 @@ print(f"SMS sent: {sms['message_id']}")`}
   );
 }
 
+/**
+ * Render the API Reference section showing available services and their method details.
+ *
+ * The component displays a service selector (sidebar on large screens, horizontal chips on mobile)
+ * and a details panel that lists each method's signature, description, parameters, and returns.
+ *
+ * @returns A React element that presents the SDK API reference for services and methods.
+ */
 function APIReferenceSection() {
   const [activeMethod, setActiveMethod] = useState('sms');
 
@@ -522,6 +554,15 @@ function APIReferenceSection() {
   );
 }
 
+/**
+ * Renders the "Code Examples" documentation section showcasing multiple SDK usage patterns.
+ *
+ * Displays four example cards: E-commerce Payment Flow, OTP Verification (SMS), Transactional Email,
+ * and Async Bulk Operations. Each card contains a titled code sample illustrating typical client usage,
+ * environment-variable-based base URL examples, and notes suitable for copy-pasting into user projects.
+ *
+ * @returns The JSX element containing the examples documentation section
+ */
 function ExamplesSection() {
   return (
     <div className="space-y-8">
@@ -677,6 +718,14 @@ for i, result in enumerate(results):
   );
 }
 
+/**
+ * Render the "Error Handling" documentation section for the SDK docs page.
+ *
+ * Renders exception type descriptions, a comprehensive Python error-handling example with retry logic,
+ * and recommended best practices for retries, idempotency, logging, and monitoring.
+ *
+ * @returns The rendered JSX for the Error Handling documentation section.
+ */
 function ErrorHandlingSection() {
   return (
     <div className="space-y-8">

@@ -44,13 +44,13 @@ SERVICE_ENV_PATTERNS = {
 
 def get_credentials_from_env(service_name: str) -> Optional[Dict[str, Any]]:
     """
-    Attempt to retrieve credentials for a service from environment variables.
+    Retrieve a service's credentials from environment variables when all required variables are present.
     
-    Args:
-        service_name: Name of the service (e.g., "razorpay", "paypal")
+    Parameters:
+        service_name (str): Service identifier matching an entry in SERVICE_ENV_PATTERNS (e.g., "razorpay", "paypal").
     
     Returns:
-        Dictionary of credentials if found, None if not all required vars are present
+        credentials (dict[str, Any] | None): A dictionary of credential values keyed by environment variable name when every required variable for the service is present; `None` if the service is unsupported or any required variable is missing.
     """
     if service_name not in SERVICE_ENV_PATTERNS:
         logger.debug(f"Service {service_name} not supported for auto-provisioning")
@@ -83,7 +83,12 @@ def get_credentials_from_env(service_name: str) -> Optional[Dict[str, Any]]:
     return credentials
 
 def get_available_env_services() -> list:
-    """Get list of services that have all required environment variables set"""
+    """
+    Return the names of services with all required environment variables present.
+    
+    Returns:
+        available_services (list): List of service name strings that have all required environment variables set.
+    """
     available = []
     for service_name in SERVICE_ENV_PATTERNS:
         if get_credentials_from_env(service_name):
@@ -91,7 +96,17 @@ def get_available_env_services() -> list:
     return available
 
 def get_env_service_status() -> Dict[str, Dict[str, Any]]:
-    """Get status of all services in environment variables"""
+    """
+    Return a mapping of all known services to their environment-credential availability and details.
+    
+    Each mapping value is a dict with:
+    - `available`: `true` if all required environment variables for the service are present, `false` otherwise.
+    - `missing_required`: list of required environment variable names when `available` is `false`, otherwise an empty list.
+    - `has_optional`: `true` if at least one optional environment variable for the service is set (only meaningful when `available` is `true`), `false` otherwise.
+    
+    Returns:
+        Dict[str, Dict[str, Any]]: Mapping from service name to its status dictionary.
+    """
     status = {}
     for service_name, pattern in SERVICE_ENV_PATTERNS.items():
         credentials = get_credentials_from_env(service_name)
@@ -111,16 +126,15 @@ async def get_credentials(
     environment: str = "test"
 ) -> Optional[Dict[str, Any]]:
     """
-    Get credentials for a specific user, provider, and environment.
+    Retrieve and decrypt the active service credentials for a user in the specified environment.
     
-    Args:
-        db: Database session
-        user_id: User ID
-        provider_name: Provider/service name (e.g., "razorpay", "paypal")
-        environment: Environment name (e.g., "test", "live")
+    Searches for an active credential matching the given user, provider, and environment; if found, returns the decrypted credentials as a dictionary.
+    
+    Parameters:
+        environment (str): Environment name such as "test" or "live". Defaults to "test".
     
     Returns:
-        Decrypted credentials dictionary or None if not found
+        dict: Decrypted credentials keyed by provider-specific fields, or `None` if no active credential is found or an error occurs.
     """
     try:
         from .credential_manager import CredentialManager
