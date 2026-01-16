@@ -13,6 +13,8 @@
 # testing
 /coverage
 
+#clerk
+.clerk
 # next.js
 /.next/
 /out/
