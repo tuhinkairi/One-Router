@@ -56,7 +56,15 @@ class CredentialManager:
         self.encryption_keys[self.current_key_version] = key_bytes
 
     def encrypt_credentials(self, credentials: Dict[str, Any]) -> bytes:
-        """Encrypt credentials dictionary using AES256-GCM"""
+        """
+        Encrypts a credentials mapping into a versioned AES-256-GCM ciphertext blob.
+        
+        Parameters:
+            credentials (Dict[str, Any]): Credential fields to encrypt; serialized to sorted JSON before encryption.
+        
+        Returns:
+            bytes: Combined payload formatted as 4-byte big-endian key version || 12-byte GCM nonce || AES-GCM ciphertext.
+        """
         import os
         import base64
 
@@ -80,7 +88,20 @@ class CredentialManager:
         return combined
 
     def decrypt_credentials(self, encrypted_data: bytes | bytearray | memoryview | str) -> Dict[str, Any]:
-        """Decrypt credentials using AES256-GCM"""
+        """
+        Decrypt an encrypted credential blob and return the credential dictionary.
+        
+        Parameters:
+            encrypted_data (bytes | bytearray | memoryview | str): The encrypted payload in the internal format
+                [4-byte big-endian version][12-byte nonce][ciphertext]. Accepts bytes-like objects or a UTF-8
+                string; non-bytes inputs are coerced to bytes before decryption.
+        
+        Returns:
+            Dict[str, Any]: Credentials parsed from the decrypted JSON payload.
+        
+        Raises:
+            ValueError: If the input cannot be decrypted with available keys or the payload is malformed.
+        """
         try:
             combined = encrypted_data
 

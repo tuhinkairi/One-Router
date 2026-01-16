@@ -9,10 +9,20 @@ class RequestRouter:
     """Routes requests to appropriate service adapters with cross-environment fallback"""
 
     def __init__(self):
+        """
+        Initialize the router and create its CredentialManager.
+        
+        Creates a CredentialManager instance and assigns it to self.credential_manager for managing service credentials.
+        """
         self.credential_manager = CredentialManager()
 
     async def _get_user_preferred_environment(self, user_id: str, service: str, db: AsyncSession) -> str:
-        """Get user's preferred environment for a service (defaults to 'test')"""
+        """
+        Return the user's preferred environment for a given service, defaulting to "test" if none is set.
+        
+        Returns:
+            environment (str): The preferred environment name for the service (for example, "test" or "live").
+        """
         result = await db.execute(
             select(User.preferences).where(User.id == user_id)
         )
@@ -32,12 +42,12 @@ class RequestRouter:
         preferred_environment: str
     ) -> Optional[ServiceCredential]:
         """
-        Get credentials with cross-environment fallback.
+        Return the user's service credential by searching the preferred environment then a cross-environment fallback.
         
-        Fallback order:
-        1. Preferred environment (from user preferences or API key)
-        2. Same environment for test/live
-        3. Auto-provision from environment variables (if available)
+        Searches the preferred environment first, then the opposite environment ("test" ↔ "live"), and returns the first active ServiceCredential found.
+        
+        Returns:
+            ServiceCredential: The matching active credential if found, `None` otherwise.
         """
         environments_to_try = []
         
@@ -64,7 +74,24 @@ class RequestRouter:
         return None
 
     async def get_adapter(self, user_id: str, service: str, db: AsyncSession, target_environment: Optional[str] = None):
-        """Get configured adapter for user with cross-environment fallback and auto-provisioning"""
+        """
+        Obtain a configured service adapter for a user, using cross-environment credential fallback and optional auto-provisioning.
+        
+        Determines the environment (using target_environment if provided, otherwise the user's preference), resolves credentials with cross-environment fallback, attempts auto-provisioning from environment variables if no stored credentials exist, decrypts the credential material, and returns an adapter instance configured for the requested service.
+        
+        Parameters:
+            user_id (str): Identifier of the user for whom the adapter is requested.
+            service (str): Name of the service provider (e.g., "razorpay", "paypal").
+            db (AsyncSession): Database session used to read/store credentials.
+            target_environment (Optional[str]): If provided, overrides the user's preferred environment.
+        
+        Returns:
+            adapter: An adapter instance configured with the decrypted credentials for the requested service.
+        
+        Raises:
+            ProviderNotConfiguredException: If no credentials can be found or provisioned for the user and service.
+            Exception: If the requested service is not supported.
+        """
 
         # Determine environment - use target_environment if provided, otherwise get user preference
         if target_environment is None:
@@ -131,7 +158,19 @@ class RequestRouter:
             raise Exception(f"Unsupported service: {service}")
 
     async def validate_service_config(self, user_id: str, service: str, db: AsyncSession) -> dict:
-        """Validate that service is properly configured and return detailed status"""
+        """
+        Check whether a service is configured for a user and return a detailed status report.
+        
+        Returns:
+            dict: A status dictionary with the following keys:
+                - service (str): The service name passed in.
+                - user_id (str): The user id passed in.
+                - configured (bool): `true` if valid credentials are available and pass validation, `false` otherwise.
+                - environment (str|None): The resolved environment used for the check (e.g., "test" or "live"), or `None` if not determined.
+                - source (str|None): Where the configuration was sourced (e.g., "database"), or `None` if not applicable.
+                - error (str|None): Error message when validation or adapter resolution failed, or `None` on success.
+                - remediation (str|None): Optional remediation guidance when the provider is not configured, or `None`.
+        """
         result = {
             "service": service,
             "user_id": user_id,

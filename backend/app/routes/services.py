@@ -131,9 +131,16 @@ async def update_service_credentials(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Update credentials for a specific service
-
-    This allows users to update their API keys and credentials for connected services.
+    Update stored credentials for the specified service for the authenticated user.
+    
+    Parameters:
+        request (UpdateCredentialsRequest): Object containing `credentials` (mapping of credential keys to values) and `environment` ("test" or "live") to apply.
+    
+    Returns:
+        dict: Payload with keys `status` ("updated"), `service_name` (str), `environment` (str), and `message` (str) describing the result.
+    
+    Raises:
+        HTTPException: 404 if no active credentials exist for the service; 400 if provided credentials fail validation; 500 for other failures during update.
     """
     try:
         user_id = str(user.get("id"))
@@ -194,20 +201,23 @@ async def delete_service_credentials(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Delete/disconnect a service by soft-deleting its credentials.
+    Disconnects a connected service for the current user by marking its credential record inactive.
     
-    This removes the service from the connected services section in the dashboard.
-    The credential record is kept in the database but marked as inactive (is_active=False).
+    If no active credential exists for the given service and user, raises an HTTPException with status 404. On unexpected errors the function rolls back the DB transaction and raises an HTTPException with status 500.
     
-    Args:
-        service_name: Name of the service to delete (e.g., "razorpay", "paypal")
+    Parameters:
+        service_name (str): The provider name to disconnect (e.g., "razorpay", "paypal").
     
     Returns:
-        {
+        dict: {
             "status": "deleted",
-            "service_name": "razorpay",
-            "message": "Service disconnected successfully"
+            "service_name": <service_name>,
+            "message": "<service_name> has been disconnected successfully"
         }
+    
+    Raises:
+        HTTPException: 404 if no active credentials are found for the service.
+        HTTPException: 500 if an unexpected error occurs while disconnecting the service.
     """
     try:
         user_id = str(user.get("id"))
@@ -263,17 +273,13 @@ async def delete_all_services(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Delete/disconnect ALL services for the current user.
-    
-    This removes all services from the connected services section in the dashboard.
-    All credential records are kept in the database but marked as inactive.
+    Soft-deletes all active service credentials for the current user by marking them inactive and updating their timestamps.
     
     Returns:
-        {
-            "status": "deleted",
-            "count": 5,
-            "message": "All services have been disconnected successfully"
-        }
+        dict: Payload containing:
+            - status (str): `"deleted"` on success.
+            - count (int): Number of credentials marked inactive.
+            - message (str): Human-readable summary of the operation.
     """
     try:
         user_id = str(user.get("id"))
